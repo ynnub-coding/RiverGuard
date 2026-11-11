@@ -1,0 +1,23 @@
+{
+  "name": "riverguard",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@11.17.0",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @riverguard/web",
+    "build": "npm run build --workspace @riverguard/web",
+    "lint": "npm run lint --workspace @riverguard/web",
+    "typecheck": "npm run typecheck --workspace @riverguard/web",
+    "format": "prettier --write \"apps/web/**/*.{ts,tsx,css,mjs,json}\" package.json .prettierrc.json",
+    "format:check": "prettier --check \"apps/web/**/*.{ts,tsx,css,mjs,json}\" package.json .prettierrc.json"
+  },
+  "devDependencies": {
+    "prettier": "3.10.0"
+  }
+}

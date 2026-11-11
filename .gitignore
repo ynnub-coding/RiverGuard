@@ -13,6 +13,7 @@ out/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+*.tsbuildinfo
 *.py[cod]
 
 # Large datasets and map tiles

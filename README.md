@@ -191,7 +191,8 @@ Primary outputs: calibrated flood-occurrence probability and risk category for a
 
 Install on the development computer:
 
-- Node.js LTS and npm (or the package manager already selected by the repository).
+- Node.js 20.9 or newer and npm 11. The repository currently uses an npm
+  workspace and records the expected package-manager version in `package.json`.
 - Python version supported by `services/ml/pyproject.toml`.
 - Git.
 - A Convex account and development deployment.
@@ -201,20 +202,27 @@ No AWS account, cloud container registry, public hosting account, or separate ma
 
 ## 6. Local setup
 
-The commands below describe the intended workflow. Match them to the scripts and lockfiles in the actual repository.
+The Next.js frontend foundation is runnable now. Convex and the Python ML
+service remain planned integrations and are not configured yet.
 
-### 6.1 Configure Convex
+### 6.1 Install JavaScript dependencies
 
-From the repository root or configured Convex project directory:
+From the repository root:
 
 ```bash
 npm install
-npx convex dev
 ```
 
-Use the Convex development deployment. Keep environment files out of Git.
+The root `package-lock.json` is the authoritative JavaScript dependency lockfile.
+
+Convex setup will be added in a later development stage. Once configured, use
+the Convex development deployment and keep environment files out of Git.
 
 ### 6.2 Start the Python ML service
+
+The ML package is currently a placeholder. The following is the intended
+workflow after `services/ml/pyproject.toml` and the FastAPI application are
+implemented.
 
 In a separate terminal:
 
@@ -247,15 +255,22 @@ The local API should expose a health endpoint such as `GET http://127.0.0.1:8000
 
 ### 6.3 Start Next.js
 
-In another terminal:
+From the repository root:
 
 ```bash
-cd apps/web
-npm install
 npm run dev
 ```
 
 Open the local URL printed by Next.js, normally `http://localhost:3000`.
+
+Available frontend quality commands:
+
+```bash
+npm run build
+npm run lint
+npm run typecheck
+npm run format:check
+```
 
 ### 6.4 Local environment configuration
 
