@@ -1,7 +1,58 @@
 @import "tailwindcss";
 
 @theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --color-stage: #1c1c1a;
+  --color-canvas: #e8e5de;
+  --color-canvas-soft: #f3f1eb;
+  --color-analysis: #11110f;
+  --color-smoke: #5c5d59;
+  --color-ink: #171715;
+  --color-muted: #6f706b;
+  --color-line: #cbc7bd;
+  --color-coral-100: #ffe3df;
   --color-coral-300: #fda49a;
+  --color-coral-500: #f26b5e;
+  --color-coral-700: #bd4037;
+  --color-success: #4f7b61;
+  --color-warning: #a36726;
+  --color-danger: #b9443f;
+
+  --radius-control: 0.5rem;
+  --radius-panel: 0.875rem;
+  --radius-structure: 1.25rem;
+
+  --text-page-title: 1.75rem;
+  --text-page-title--line-height: 2.125rem;
+  --text-page-title--font-weight: 650;
+  --text-major-status: 1.375rem;
+  --text-major-status--line-height: 1.6875rem;
+  --text-major-status--font-weight: 600;
+  --text-section: 1rem;
+  --text-section--line-height: 1.375rem;
+  --text-section--font-weight: 600;
+  --text-navigation: 0.875rem;
+  --text-navigation--line-height: 1.25rem;
+  --text-navigation--font-weight: 550;
+  --text-body: 0.8125rem;
+  --text-body--line-height: 1.1875rem;
+  --text-button: 0.8125rem;
+  --text-button--line-height: 1.125rem;
+  --text-button--font-weight: 600;
+  --text-metadata: 0.6875rem;
+  --text-metadata--line-height: 0.9375rem;
+  --text-metadata--font-weight: 500;
+}
+
+:root {
+  --rg-space-1: 0.5rem;
+  --rg-space-2: 1rem;
+  --rg-space-3: 1.5rem;
+  --rg-space-4: 2rem;
+  --rg-space-5: 2.5rem;
+  --rg-space-6: 3rem;
+  color-scheme: light;
 }
 
 * {
@@ -10,15 +61,27 @@
 
 html {
   min-width: 320px;
-  background: #020617;
+  background: var(--color-stage);
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-stage);
+  color: var(--color-ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-coral-100);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-coral-500);
+  outline-offset: 3px;
 }
 
 button,
@@ -26,4 +89,15 @@ input,
 textarea,
 select {
   font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

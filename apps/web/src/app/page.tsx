@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main
@@ -16,6 +18,12 @@ export default function Home() {
           toolchain are configured. The approved Spatial Ledger design will be
           introduced in the next development stage.
         </p>
+        <Link
+          href="/design-system"
+          className="text-button mt-6 inline-flex min-h-10 items-center rounded-control bg-coral-500 px-4 text-analysis transition-colors hover:bg-coral-300"
+        >
+          Review design foundation
+        </Link>
       </section>
     </main>
   );
