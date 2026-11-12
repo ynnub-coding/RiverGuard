@@ -11,6 +11,9 @@
   --color-ink: #171715;
   --color-muted: #6f706b;
   --color-line: #cbc7bd;
+  --color-chart-surface: #f6f4ee;
+  --color-chart-grid: #d7d3ca;
+  --color-chart-bar: #85857f;
   --color-coral-100: #ffe3df;
   --color-coral-300: #fda49a;
   --color-coral-500: #f26b5e;
@@ -61,13 +64,13 @@
 
 html {
   min-width: 320px;
-  background: var(--color-stage);
+  background: var(--color-canvas);
 }
 
 body {
   min-height: 100vh;
   margin: 0;
-  background: var(--color-stage);
+  background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   text-rendering: optimizeLegibility;
@@ -82,6 +85,20 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-coral-500);
   outline-offset: 3px;
+}
+
+[data-dashboard-section] {
+  scroll-margin-top: 6rem;
+  transition:
+    outline-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+[data-dashboard-section]:target {
+  outline: 2px solid color-mix(in srgb, var(--color-coral-500) 72%, transparent);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px
+    color-mix(in srgb, var(--color-coral-500) 18%, transparent);
 }
 
 button,

@@ -56,7 +56,9 @@ export function Button({
           className="size-3.5 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none"
         />
       ) : null}
-      <span>{loading ? loadingLabel : children}</span>
+      <span className="inline-flex items-center justify-center gap-2 whitespace-nowrap">
+        {loading ? loadingLabel : children}
+      </span>
     </button>
   );
 }
