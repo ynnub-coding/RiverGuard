@@ -11,11 +11,13 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace @riverguard/web",
+    "convex:dev": "convex dev --env-file apps/web/.env.local",
+    "convex:typecheck": "tsc --noEmit -p convex/tsconfig.json",
     "build": "npm run build --workspace @riverguard/web",
     "lint": "npm run lint --workspace @riverguard/web",
-    "typecheck": "npm run typecheck --workspace @riverguard/web",
-    "format": "prettier --write \"apps/web/**/*.{ts,tsx,css,mjs,json}\" package.json .prettierrc.json",
-    "format:check": "prettier --check \"apps/web/**/*.{ts,tsx,css,mjs,json}\" package.json .prettierrc.json"
+    "typecheck": "npm run typecheck --workspace @riverguard/web && npm run convex:typecheck",
+    "format": "prettier --write \"apps/web/**/*.{ts,tsx,css,mjs,json}\" \"convex/**/*.ts\" convex.json package.json .prettierrc.json",
+    "format:check": "prettier --check \"apps/web/**/*.{ts,tsx,css,mjs,json}\" \"convex/**/*.ts\" convex.json package.json .prettierrc.json"
   },
   "devDependencies": {
     "prettier": "3.10.0"

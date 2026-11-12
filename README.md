@@ -202,8 +202,10 @@ No AWS account, cloud container registry, public hosting account, or separate ma
 
 ## 6. Local setup
 
-The Next.js frontend foundation is runnable now. Convex and the Python ML
-service remain planned integrations and are not configured yet.
+The Next.js frontend foundation and Convex schema are runnable now. A Convex
+development deployment still needs to be selected before database queries are
+connected to the dashboard. The Python ML service remains a planned
+integration.
 
 ### 6.1 Install JavaScript dependencies
 
@@ -215,8 +217,17 @@ npm install
 
 The root `package-lock.json` is the authoritative JavaScript dependency lockfile.
 
-Convex setup will be added in a later development stage. Once configured, use
-the Convex development deployment and keep environment files out of Git.
+The first time you configure Convex, run this from the repository root:
+
+```bash
+npm run convex:dev
+```
+
+Choose a development deployment when prompted. The command writes the local
+deployment values to `apps/web/.env.local`, generates the typed API files under
+`convex/_generated/`, and keeps the schema synchronized while it is running.
+Keep the generated `.env.local` file out of Git. The approved dashboard falls
+back to its clearly labelled sample data when no Convex URL is configured.
 
 ### 6.2 Start the Python ML service
 
@@ -261,7 +272,8 @@ From the repository root:
 npm run dev
 ```
 
-Open the local URL printed by Next.js, normally `http://localhost:3000`.
+Open the local URL printed by Next.js, normally `http://localhost:3000`. During
+backend work, keep `npm run convex:dev` running in a second terminal.
 
 Available frontend quality commands:
 
