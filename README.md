@@ -191,7 +191,8 @@ Primary outputs: calibrated flood-occurrence probability and risk category for a
 
 Install on the development computer:
 
-- Node.js LTS and npm (or the package manager already selected by the repository).
+- Node.js 20.9 or newer and npm 11. The repository currently uses an npm
+  workspace and records the expected package-manager version in `package.json`.
 - Python version supported by `services/ml/pyproject.toml`.
 - Git.
 - A Convex account and development deployment.
@@ -201,20 +202,38 @@ No AWS account, cloud container registry, public hosting account, or separate ma
 
 ## 6. Local setup
 
-The commands below describe the intended workflow. Match them to the scripts and lockfiles in the actual repository.
+The Next.js frontend foundation and Convex schema are runnable now. A Convex
+development deployment still needs to be selected before database queries are
+connected to the dashboard. The Python ML service remains a planned
+integration.
 
-### 6.1 Configure Convex
+### 6.1 Install JavaScript dependencies
 
-From the repository root or configured Convex project directory:
+From the repository root:
 
 ```bash
 npm install
-npx convex dev
 ```
 
-Use the Convex development deployment. Keep environment files out of Git.
+The root `package-lock.json` is the authoritative JavaScript dependency lockfile.
+
+The first time you configure Convex, run this from the repository root:
+
+```bash
+npm run convex:dev
+```
+
+Choose a development deployment when prompted. The command writes the local
+deployment values to `apps/web/.env.local`, generates the typed API files under
+`convex/_generated/`, and keeps the schema synchronized while it is running.
+Keep the generated `.env.local` file out of Git. The approved dashboard falls
+back to its clearly labelled sample data when no Convex URL is configured.
 
 ### 6.2 Start the Python ML service
+
+The ML package is currently a placeholder. The following is the intended
+workflow after `services/ml/pyproject.toml` and the FastAPI application are
+implemented.
 
 In a separate terminal:
 
@@ -247,15 +266,23 @@ The local API should expose a health endpoint such as `GET http://127.0.0.1:8000
 
 ### 6.3 Start Next.js
 
-In another terminal:
+From the repository root:
 
 ```bash
-cd apps/web
-npm install
 npm run dev
 ```
 
-Open the local URL printed by Next.js, normally `http://localhost:3000`.
+Open the local URL printed by Next.js, normally `http://localhost:3000`. During
+backend work, keep `npm run convex:dev` running in a second terminal.
+
+Available frontend quality commands:
+
+```bash
+npm run build
+npm run lint
+npm run typecheck
+npm run format:check
+```
 
 ### 6.4 Local environment configuration
 

@@ -4,6 +4,10 @@ This folder contains the project documentation for RiverGuard, an explainable ma
 
 See the project root [`README.md`](../README.md) for the overall project overview, architecture, technology stack, and development setup.
 
+## Product design
+
+- [`designs/ui-ux-design-cheat-sheet.md`](designs/ui-ux-design-cheat-sheet.md) — Complete role, authentication, onboarding, screen, form, permission, system-state, and end-to-end UI/UX flow reference.
+
 ## Folder organization
 
 | Folder | Purpose |

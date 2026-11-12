@@ -2,6 +2,7 @@
 node_modules/
 .next/
 out/
+next-env.d.ts
 
 # Environment variables
 .env
@@ -13,6 +14,7 @@ out/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+*.tsbuildinfo
 *.py[cod]
 
 # Large datasets and map tiles
