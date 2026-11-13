@@ -63,7 +63,7 @@ export function HazardLayerControl({
                 aria-hidden="true"
                 size={21}
                 weight={selected ? "fill" : "regular"}
-                className={selected ? "text-coral-500" : "text-muted"}
+                className={selected ? "text-brand-secondary" : "text-muted"}
               />
               <span>
                 <span className="text-button block">{layer.label}</span>

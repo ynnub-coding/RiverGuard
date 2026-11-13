@@ -27,7 +27,7 @@ export function RiskSummary({ selectedDay, onDayChange }: RiskSummaryProps) {
           Illustrative sample
         </StatusLabel>
       </div>
-      <p className="text-major-status mt-2 text-coral-700">
+      <p className="text-major-status mt-2 text-warning">
         {activeDay.label} experimental index
       </p>
       <p className="text-body mt-1 text-muted">
@@ -49,8 +49,8 @@ export function RiskSummary({ selectedDay, onDayChange }: RiskSummaryProps) {
               onClick={() => onDayChange(index)}
               className={`rounded-control border px-1 py-2 text-center transition-colors motion-reduce:transition-none ${
                 active
-                  ? "border-coral-500 bg-coral-500 text-analysis"
-                  : "border-line bg-canvas text-ink hover:bg-coral-100"
+                  ? "border-brand-secondary bg-brand-secondary text-white"
+                  : "border-line bg-canvas text-ink hover:bg-brand-secondary-soft"
               }`}
             >
               <span className="text-metadata block">{day.day}</span>

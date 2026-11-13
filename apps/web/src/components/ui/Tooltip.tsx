@@ -23,7 +23,7 @@ export function Tooltip({ children, content, side = "top" }: TooltipProps) {
         aria-hidden="true"
         role="tooltip"
         className={cx(
-          "text-metadata pointer-events-none absolute z-30 w-max max-w-52 rounded-control bg-analysis px-2.5 py-1.5 text-left text-canvas-soft opacity-0 shadow-lg transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none",
+          "text-metadata pointer-events-none absolute z-30 w-max max-w-52 rounded-control bg-brand-primary px-2.5 py-1.5 text-left text-white opacity-0 shadow-lg transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none",
           positionClasses[side],
         )}
       >

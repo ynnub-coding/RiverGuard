@@ -88,15 +88,15 @@ export function RainfallChart() {
             name="Water level (m)"
             dataKey="waterLevel"
             type="monotone"
-            stroke="var(--color-coral-500)"
+            stroke="var(--color-brand-secondary)"
             strokeWidth={3}
             dot={{
-              fill: "var(--color-coral-500)",
+              fill: "var(--color-brand-secondary)",
               stroke: "var(--color-chart-surface)",
               strokeWidth: 2,
               r: 4,
             }}
-            activeDot={{ r: 5, fill: "var(--color-coral-300)" }}
+            activeDot={{ r: 5, fill: "var(--color-brand-secondary-hover)" }}
           />
         </ComposedChart>
       </div>

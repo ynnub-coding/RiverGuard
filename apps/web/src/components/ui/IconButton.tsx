@@ -28,7 +28,7 @@ export function IconButton({
         "inline-flex size-10 items-center justify-center rounded-control border transition-colors motion-reduce:transition-none",
         "disabled:cursor-not-allowed disabled:opacity-45",
         tone === "dark"
-          ? "border-white/15 bg-analysis text-canvas-soft hover:bg-smoke"
+          ? "border-white/15 bg-brand-primary text-white hover:bg-brand-secondary"
           : "border-line bg-canvas-soft text-ink hover:bg-white",
         className,
       )}

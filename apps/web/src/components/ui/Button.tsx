@@ -4,8 +4,9 @@ import { cx } from "@/lib/classnames";
 
 const variantClasses = {
   primary:
-    "bg-coral-500 text-analysis hover:bg-coral-300 active:bg-coral-700 active:text-white",
-  secondary: "bg-analysis text-canvas-soft hover:bg-smoke active:bg-ink",
+    "bg-brand-primary text-white hover:bg-brand-primary-hover active:bg-brand-primary-active",
+  secondary:
+    "bg-brand-secondary text-white hover:bg-brand-secondary-hover active:bg-brand-primary",
   quiet:
     "border border-line bg-transparent text-ink hover:bg-canvas-soft active:bg-line",
   danger: "bg-danger text-white hover:bg-danger/90 active:bg-danger/80",

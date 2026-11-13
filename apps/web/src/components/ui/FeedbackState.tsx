@@ -40,7 +40,7 @@ export function FeedbackState({
           className={cx(
             "mb-4 block size-3 rounded-full",
             tone === "loading" &&
-              "animate-pulse bg-coral-500 motion-reduce:animate-none",
+              "animate-pulse bg-brand-secondary motion-reduce:animate-none",
             tone === "empty" && "bg-muted",
             tone === "unavailable" && "bg-warning",
             tone === "error" && "bg-danger",

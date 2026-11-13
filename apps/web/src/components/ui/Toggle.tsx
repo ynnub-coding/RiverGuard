@@ -51,7 +51,9 @@ export function Toggle({
         className={cx(
           "relative h-7 w-12 shrink-0 rounded-full border transition-colors motion-reduce:transition-none",
           "disabled:cursor-not-allowed disabled:opacity-45",
-          isPressed ? "border-coral-500 bg-coral-500" : "border-line bg-canvas",
+          isPressed
+            ? "border-brand-secondary bg-brand-secondary"
+            : "border-line bg-canvas",
         )}
       >
         <span

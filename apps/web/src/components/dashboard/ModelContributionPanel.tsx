@@ -2,9 +2,9 @@ import { StatusLabel } from "@/components/ui";
 import { modelContributions } from "@/data/dashboard";
 
 const toneClasses = {
-  strong: "bg-coral-500",
-  medium: "bg-coral-300",
-  light: "bg-coral-100",
+  strong: "bg-brand-primary",
+  medium: "bg-brand-secondary",
+  light: "bg-brand-secondary-muted",
 };
 
 export function ModelContributionPanel() {
