@@ -4,8 +4,8 @@ import { cx } from "@/lib/classnames";
 
 const toneClasses = {
   canvas: "bg-canvas-soft text-ink",
-  smoke: "bg-smoke text-white",
-  analysis: "bg-analysis text-canvas-soft",
+  selection: "bg-brand-secondary text-white",
+  primary: "bg-brand-primary text-white",
   outline: "border border-line bg-transparent text-ink",
 };
 

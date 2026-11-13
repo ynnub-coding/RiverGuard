@@ -3,21 +3,22 @@
 @theme {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
-  --color-stage: #1c1c1a;
-  --color-canvas: #e8e5de;
-  --color-canvas-soft: #f3f1eb;
-  --color-analysis: #11110f;
-  --color-smoke: #5c5d59;
-  --color-ink: #171715;
-  --color-muted: #6f706b;
-  --color-line: #cbc7bd;
-  --color-chart-surface: #f6f4ee;
-  --color-chart-grid: #d7d3ca;
-  --color-chart-bar: #85857f;
-  --color-coral-100: #ffe3df;
-  --color-coral-300: #fda49a;
-  --color-coral-500: #f26b5e;
-  --color-coral-700: #bd4037;
+  --color-stage: #353535;
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #f4f4f4;
+  --color-ink: #353535;
+  --color-muted: #666666;
+  --color-line: #d9d9d9;
+  --color-brand-primary: #284b63;
+  --color-brand-primary-hover: #1f3d52;
+  --color-brand-primary-active: #193245;
+  --color-brand-secondary: #3c6e71;
+  --color-brand-secondary-hover: #315e61;
+  --color-brand-secondary-soft: #e8f0f0;
+  --color-brand-secondary-muted: #a5bdbe;
+  --color-chart-surface: #ffffff;
+  --color-chart-grid: #d9d9d9;
+  --color-chart-bar: #284b63;
   --color-success: #4f7b61;
   --color-warning: #a36726;
   --color-danger: #b9443f;
@@ -58,6 +59,23 @@
   color-scheme: light;
 }
 
+.river-palette-preview .recharts-default-legend {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem 0.75rem;
+  width: 100% !important;
+}
+
+.river-palette-preview .recharts-legend-item {
+  margin-right: 0 !important;
+}
+
+.river-palette-preview .recharts-legend-wrapper {
+  left: 0 !important;
+  width: 100% !important;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -78,12 +96,12 @@ body {
 }
 
 ::selection {
-  background: var(--color-coral-100);
+  background: var(--color-brand-secondary-soft);
   color: var(--color-ink);
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-coral-500);
+  outline: 2px solid var(--color-brand-secondary);
   outline-offset: 3px;
 }
 
@@ -95,10 +113,11 @@ body {
 }
 
 [data-dashboard-section]:target {
-  outline: 2px solid color-mix(in srgb, var(--color-coral-500) 72%, transparent);
+  outline: 2px solid
+    color-mix(in srgb, var(--color-brand-secondary) 72%, transparent);
   outline-offset: 3px;
   box-shadow: 0 0 0 5px
-    color-mix(in srgb, var(--color-coral-500) 18%, transparent);
+    color-mix(in srgb, var(--color-brand-secondary) 18%, transparent);
 }
 
 button,

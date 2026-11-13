@@ -92,7 +92,7 @@ export function DashboardLayout() {
                 onClick={() => setActiveSection(item.id)}
                 className={`text-navigation shrink-0 rounded-full px-3 py-2.5 transition-colors md:px-4 ${
                   activeSection === item.id
-                    ? "bg-coral-500 text-analysis"
+                    ? "bg-brand-primary text-white"
                     : "text-ink hover:bg-canvas-soft"
                 }`}
               >
@@ -161,7 +161,7 @@ export function DashboardLayout() {
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Button
-                  variant="secondary"
+                  variant="primary"
                   size="small"
                   loading={isRunning}
                   loadingLabel="Refreshing preview"
@@ -198,7 +198,7 @@ export function DashboardLayout() {
               </div>
             </div>
 
-            <div className="mt-3 flex items-center gap-2 rounded-control border border-coral-500/25 bg-coral-100/55 px-4 py-3 text-coral-700">
+            <div className="mt-3 flex items-center gap-2 rounded-control border border-brand-secondary/25 bg-brand-secondary-soft px-4 py-3 text-brand-primary">
               <ChartLineUp aria-hidden="true" size={18} />
               <p className="text-metadata">
                 Experimental research output—verify official PAGASA and LGU

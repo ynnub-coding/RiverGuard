@@ -58,7 +58,7 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
           <span
             className={`flex items-center gap-1.5 rounded-control px-2.5 py-1.5 shadow-lg ${
               city.selected
-                ? "bg-coral-500 text-analysis"
+                ? "bg-danger text-white"
                 : "bg-canvas-soft/92 text-ink"
             }`}
           >
@@ -79,16 +79,16 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
             {activeLayer === "experimental" ? (
               <>
                 <p className="flex items-center gap-2">
-                  <span className="size-3 rounded-sm bg-coral-500" /> Higher
+                  <span className="size-3 rounded-sm bg-danger" /> Higher
                   (sample)
                 </p>
                 <p className="flex items-center gap-2">
-                  <span className="size-3 rounded-sm bg-coral-300" /> Moderate
+                  <span className="size-3 rounded-sm bg-warning" /> Moderate
                   (sample)
                 </p>
                 <p className="flex items-center gap-2">
-                  <span className="size-3 rounded-sm bg-coral-100" /> Lower
-                  (sample)
+                  <span className="size-3 rounded-sm bg-brand-secondary-muted" />
+                  Lower (sample)
                 </p>
               </>
             ) : (
@@ -130,7 +130,7 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
             className="hidden bg-canvas-soft/95 px-3 py-3 backdrop-blur-sm sm:block"
           >
             <p className="text-metadata flex items-center gap-2 text-ink">
-              <span className="size-2 rounded-full bg-coral-500" /> {city.name}
+              <span className="size-2 rounded-full bg-success" /> {city.name}
             </p>
             <p className="text-metadata mt-1 text-muted">{city.status}</p>
           </div>
