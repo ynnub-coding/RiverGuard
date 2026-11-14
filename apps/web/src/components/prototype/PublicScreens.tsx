@@ -1449,30 +1449,55 @@ export function SettingsScreen({ screen }: { screen: string }) {
     );
   } else if (activeScreen === "password") {
     content = (
-      <div className="max-w-xl">
-        <h2 className="text-major-status">Change password</h2>
-        <p className="text-body mt-1 text-muted">
-          Choose a strong password that is not reused elsewhere.
-        </p>
-        <div className="mt-4 grid gap-3">
-          <PasswordField
-            id="current-password"
-            label="Current password"
-            autoComplete="current-password"
-          />
-          <PasswordField
-            id="settings-new-password"
-            label="New password"
-            autoComplete="new-password"
-          />
-          <PasswordField
-            id="settings-confirm-password"
-            label="Confirm new password"
-            autoComplete="new-password"
-          />
-          <Button size="small" onClick={() => setSaved(true)}>
-            Change password
-          </Button>
+      <div className="grid gap-6 lg:grid-cols-[minmax(220px,0.7fr)_minmax(0,1.3fr)] lg:gap-8">
+        <div className="self-stretch rounded-control border border-line bg-canvas-soft p-4">
+          <p className="text-metadata font-semibold uppercase tracking-[0.12em] text-muted">
+            Security
+          </p>
+          <h2 className="text-section mt-2">Password security</h2>
+          <p className="text-body mt-1 text-muted">
+            Keep your RiverGuard account protected with a password that is
+            unique to this workspace.
+          </p>
+          <ul className="text-body mt-4 grid gap-2 text-muted">
+            <li>Use at least 12 characters.</li>
+            <li>Do not reuse a password from another service.</li>
+            <li>Never share your password or verification codes.</li>
+          </ul>
+        </div>
+        <div className="min-w-0">
+          <h2 className="text-major-status">Change password</h2>
+          <p className="text-body mt-1 text-muted">
+            Choose a strong password that is not reused elsewhere.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <PasswordField
+                id="current-password"
+                label="Current password"
+                autoComplete="current-password"
+              />
+            </div>
+            <PasswordField
+              id="settings-new-password"
+              label="New password"
+              autoComplete="new-password"
+            />
+            <PasswordField
+              id="settings-confirm-password"
+              label="Confirm new password"
+              autoComplete="new-password"
+            />
+            <div className="sm:col-span-2">
+              <Button
+                size="small"
+                className="w-full"
+                onClick={() => setSaved(true)}
+              >
+                Change password
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
