@@ -17,7 +17,7 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
       id="map-workspace"
       aria-labelledby="map-title"
       data-dashboard-section
-      className="relative min-h-[700px] overflow-hidden rounded-panel bg-line min-[1180px]:min-h-[760px]"
+      className="relative min-h-[610px] overflow-hidden rounded-panel bg-line min-[1180px]:min-h-[680px]"
     >
       <Image
         src="/maps/ncr-illustrative-background.png"
@@ -28,9 +28,9 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
         className="object-cover object-[48%_42%]"
       />
 
-      <div className="absolute top-5 left-5 rounded-control bg-canvas-soft/90 px-4 py-3 backdrop-blur-sm">
+      <div className="absolute top-4 left-4 rounded-control bg-canvas-soft/90 px-3 py-2.5 backdrop-blur-sm">
         <div className="flex items-center gap-2">
-          <MapTrifold aria-hidden="true" size={22} weight="duotone" />
+          <MapTrifold aria-hidden="true" size={18} weight="duotone" />
           <div>
             <h2 id="map-title" className="text-section">
               NCR (Metro Manila)
@@ -42,7 +42,7 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
         </div>
       </div>
 
-      <div className="absolute top-5 right-5 hidden lg:block">
+      <div className="absolute top-4 right-4 hidden lg:block">
         <HazardLayerControl
           activeLayer={activeLayer}
           onLayerChange={onLayerChange}
@@ -69,7 +69,7 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
       ))}
 
       <div className="absolute right-4 bottom-28 left-4 flex flex-col items-stretch justify-between gap-3 sm:right-5 sm:bottom-24 sm:left-5 lg:flex-row lg:items-end">
-        <div className="w-full rounded-panel border border-line bg-canvas-soft/95 p-4 text-ink shadow-lg backdrop-blur-sm lg:max-w-[260px]">
+        <div className="w-full rounded-panel border border-line bg-canvas-soft/95 p-3 text-ink shadow-lg backdrop-blur-sm lg:max-w-[230px]">
           <p className="text-button">
             {activeLayer === "experimental"
               ? "Experimental outlook"
@@ -80,15 +80,13 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
               <>
                 <p className="flex items-center gap-2">
                   <span className="size-3 rounded-sm bg-danger" /> Higher
-                  (sample)
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="size-3 rounded-sm bg-warning" /> Moderate
-                  (sample)
                 </p>
                 <p className="flex items-center gap-2">
                   <span className="size-3 rounded-sm bg-brand-secondary-muted" />
-                  Lower (sample)
+                  Lower
                 </p>
               </>
             ) : (
@@ -103,7 +101,7 @@ export function RiverMap({ activeLayer, onLayerChange }: RiverMapProps) {
           </div>
         </div>
 
-        <div className="flex max-w-sm items-start gap-3 rounded-panel bg-canvas-soft/90 p-4 text-ink backdrop-blur-sm">
+        <div className="flex max-w-sm items-start gap-2.5 rounded-panel bg-canvas-soft/90 p-3 text-ink backdrop-blur-sm">
           <Info aria-hidden="true" size={20} className="mt-0.5 shrink-0" />
           <div>
             <p className="text-button">City-level daily coverage</p>

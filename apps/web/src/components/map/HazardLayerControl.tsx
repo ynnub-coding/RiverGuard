@@ -31,7 +31,7 @@ export function HazardLayerControl({
   return (
     <fieldset
       aria-labelledby="map-layers-title"
-      className="w-[250px] rounded-panel border border-line bg-canvas-soft/95 p-4 text-ink shadow-xl backdrop-blur-sm"
+      className="w-[220px] rounded-panel border border-line bg-canvas-soft/95 p-3 text-ink shadow-xl backdrop-blur-sm"
     >
       <p
         id="map-layers-title"
@@ -47,7 +47,7 @@ export function HazardLayerControl({
           return (
             <label
               key={layer.id}
-              className={`flex cursor-pointer gap-3 py-3 ${
+              className={`flex cursor-pointer gap-2.5 py-2.5 ${
                 index === 0 ? "border-b border-line" : ""
               }`}
             >
@@ -61,7 +61,7 @@ export function HazardLayerControl({
               />
               <Icon
                 aria-hidden="true"
-                size={21}
+                size={18}
                 weight={selected ? "fill" : "regular"}
                 className={selected ? "text-brand-secondary" : "text-muted"}
               />
