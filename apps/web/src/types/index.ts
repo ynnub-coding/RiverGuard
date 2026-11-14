@@ -1,4 +1,4 @@
-export type MapLayerId = "experimental" | "static";
+export type MapLayerId = "base" | "experimental" | "static";
 
 export interface OutlookDay {
   date: number;
@@ -22,9 +22,5 @@ export interface SupportedCity {
   id: "quezon-city" | "marikina" | "manila" | "pasig";
   name: string;
   status: "Available";
-  mapPosition: {
-    left: string;
-    top: string;
-  };
   selected?: boolean;
 }

@@ -42,7 +42,7 @@ const railActions = [
 ];
 
 export function DashboardLayout() {
-  const [activeLayer, setActiveLayer] = useState<MapLayerId>("experimental");
+  const [activeLayer, setActiveLayer] = useState<MapLayerId>("base");
   const [activeSection, setActiveSection] = useState("dashboard");
   const [selectedDay, setSelectedDay] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
