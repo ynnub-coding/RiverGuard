@@ -21,7 +21,7 @@ export interface ModelContribution {
 export interface SupportedCity {
   id: "quezon-city" | "marikina" | "manila" | "pasig";
   name: string;
-  status: "Available (sample)";
+  status: "Available";
   mapPosition: {
     left: string;
     top: string;
