@@ -165,13 +165,13 @@ function ResidentOutlook() {
 }
 
 function HazardContext() {
-  const [layer, setLayer] = useState<MapLayerId>("static");
+  const [layer, setLayer] = useState<MapLayerId>("base");
   return (
     <>
       <PageHeading
         title="Hazard context"
         eyebrow="Long-term susceptibility"
-        description="Static hazard context is displayed separately from dated experimental forecasts."
+        description="The real basemap is ready; verified static susceptibility data is still pending."
       />
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_320px]">
         <RiverMap activeLayer={layer} onLayerChange={setLayer} />
@@ -181,9 +181,10 @@ function HazardContext() {
             whether flooding will occur today, and it must not be combined with
             forecast categories in one ambiguous legend.
           </p>
-          <Notice title="Illustrative layer" tone="warning">
-            The current boundary is illustrative. Verified local GIS sources
-            will replace it when live data is connected.
+          <Notice title="Verified GIS layer required" tone="warning">
+            No RiverGuard hazard geometry is loaded. A verified local GIS
+            boundary and susceptibility layer must be supplied before this view
+            can show static hazard context.
           </Notice>
         </Surface>
       </div>
@@ -323,7 +324,7 @@ function LguHome() {
 }
 
 function LguMap() {
-  const [layer, setLayer] = useState<MapLayerId>("experimental");
+  const [layer, setLayer] = useState<MapLayerId>("base");
   return (
     <>
       <PageHeading
@@ -395,7 +396,11 @@ function LguOutlook() {
         <RiskSummary selectedDay={day} onDayChange={setDay} />
         <RainfallChart />
       </div>
-      <Notice title="Official assessment required" tone="warning">
+      <Notice
+        title="Official assessment required"
+        tone="warning"
+        className="mt-4"
+      >
         Escalate concerns through the established LGU process. Do not publish
         this experimental output as an official advisory.
       </Notice>
@@ -545,7 +550,11 @@ function ReviewForm() {
             <dt className="text-muted">Limitation</dt>
             <dd>City-level only</dd>
           </dl>
-          <Notice title="Not an approval to publish" tone="warning">
+          <Notice
+            title="Not an approval to publish"
+            tone="warning"
+            className="mt-4"
+          >
             Review completion records an internal assessment only.
           </Notice>
         </Surface>
@@ -1051,7 +1060,7 @@ function ConfigurationScreen({ kind }: { kind: string }) {
         ["Representative coordinates", "14.6507, 121.1029"],
         ["Support status", "Supported"],
         ["Compatible model", "RG-NCR v0.4"],
-        ["Boundary asset", "Local illustrative map"],
+        ["Boundary asset", "Not supplied"],
         ["Limitation", "City-level only"],
       ],
     },

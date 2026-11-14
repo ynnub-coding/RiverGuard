@@ -41,7 +41,7 @@ import {
 } from "./Primitives";
 
 function DashboardOverview() {
-  const [activeLayer, setActiveLayer] = useState<MapLayerId>("experimental");
+  const [activeLayer, setActiveLayer] = useState<MapLayerId>("base");
   const [selectedDay, setSelectedDay] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshNote, setRefreshNote] = useState(
@@ -95,7 +95,7 @@ function DashboardOverview() {
 }
 
 function MapWorkspace() {
-  const [activeLayer, setActiveLayer] = useState<MapLayerId>("experimental");
+  const [activeLayer, setActiveLayer] = useState<MapLayerId>("base");
   return (
     <>
       <PageHeading
@@ -110,10 +110,11 @@ function MapWorkspace() {
       />
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_320px]">
         <RiverMap activeLayer={activeLayer} onLayerChange={setActiveLayer} />
-        <div className="grid content-start gap-3">
+        <div className="grid content-start gap-3 xl:flex xl:h-full xl:flex-col">
           <Surface
             title="Location list"
             description="Accessible alternative to the map"
+            className="xl:flex-1"
           >
             <div className="grid gap-2">
               {supportedLocations.map((location) => (
@@ -147,9 +148,10 @@ function MapWorkspace() {
               ))}
             </div>
           </Surface>
-          <Notice title="Map limitation">
-            This is an illustrative map, not a surveyed hazard boundary or
-            street-level result.
+          <Notice title="Map limitation" className="xl:shrink-0">
+            This is a real OpenStreetMap basemap. RiverGuard boundaries,
+            monitoring stations, hazard layers, and predictions are not loaded
+            until verified local GIS and model data are supplied.
           </Notice>
         </div>
       </div>
