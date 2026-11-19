@@ -75,6 +75,16 @@ export interface RecentRun {
   days: number;
   alerts: number;
   modelVersion: string | null;
+  reviewStatus: "pending" | "reviewed" | "escalated" | "returned";
+  reviewerName: string | null;
+}
+
+export interface LguReview {
+  status: "reviewed" | "escalated" | "returned";
+  locationCode: string;
+  notes: string;
+  reviewedAt: number;
+  reviewerName: string;
 }
 
 /** One day of a stored run, as `forecasts:getRun` returns it. */
@@ -127,6 +137,20 @@ export const convexFunctions = {
   getRun: makeFunctionReference<"query", { runId: string }, RemoteRun | null>(
     "forecasts:getRun",
   ),
+  getLguReview: makeFunctionReference<
+    "query",
+    { runId: string },
+    LguReview | null
+  >("reviews:getForRun"),
+  submitLguReview: makeFunctionReference<
+    "mutation",
+    {
+      runId: string;
+      status: "reviewed" | "escalated" | "returned";
+      notes: string;
+    },
+    { status: "reviewed" | "escalated" | "returned"; reviewedAt: number }
+  >("reviews:submit"),
   listOpenAlerts: makeFunctionReference<
     "query",
     { locationCode: string; limit?: number },

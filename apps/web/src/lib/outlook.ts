@@ -41,6 +41,17 @@ export interface ObservedStateSummary {
   waterLevelM: number | null;
 }
 
+export interface ModelInputSnapshot {
+  rainfallTodayMm: number;
+  antecedentRain3dMm: number;
+  antecedentRain7dMm: number;
+  antecedentRain30dMm: number;
+  soilMoisturePercent: number;
+  nextDayRainfallMm: number | null;
+  nextDayTmaxC: number | null;
+  nextDayTminC: number | null;
+}
+
 export interface OutlookSnapshot {
   days: OutlookDay[];
   source: OutlookSource;
@@ -54,6 +65,8 @@ export interface OutlookSnapshot {
   /** Why the run is degraded, when it is. */
   degradationReason: string | null;
   observed: ObservedStateSummary | null;
+  modelInputs: ModelInputSnapshot | null;
+  operatingThreshold: number | null;
   /** The model's own caveat string, carried through from the ML service. */
   modelWarning: string | null;
   /**
@@ -115,10 +128,31 @@ interface ForecastApiDay {
 
 export interface ForecastApiResponse {
   location: { code: string; name: string };
-  weather: { provider: string; degraded: boolean; degradationReason?: string };
+  weather: {
+    provider: string;
+    degraded: boolean;
+    degradationReason?: string;
+    observed?: {
+      rainfallTodayMm: number;
+      antecedentRain3dMm: number;
+      antecedentRain7dMm: number;
+      antecedentRain30dMm: number;
+      soilMoisturePercent: number;
+    };
+    days?: Array<{
+      rainfallMm: number;
+      tmaxC: number;
+      tminC: number;
+    }>;
+  };
   /** Absent when no provider answered, e.g. a 502 weather failure. */
   observedState: ObservedStateSummary | null;
-  forecast: { modelVersion: string; days: ForecastApiDay[]; warning?: string };
+  forecast: {
+    modelVersion: string;
+    operatingThreshold?: number;
+    days: ForecastApiDay[];
+    warning?: string;
+  };
   persistence: {
     kind: PersistenceKind;
     enabled: boolean;
@@ -142,6 +176,8 @@ export function snapshotFromApiResponse(
   payload: ForecastApiResponse,
   updatedAt: number,
 ): OutlookSnapshot {
+  const observed = payload.weather.observed;
+  const firstForecastDay = payload.weather.days?.[0];
   return {
     days: payload.forecast.days.map(toOutlookDay),
     source: "live",
@@ -154,6 +190,19 @@ export function snapshotFromApiResponse(
     alerts: payload.persistence?.alerts ?? 0,
     warnings: payload.warnings ?? [],
     observed: payload.observedState ?? null,
+    modelInputs: observed
+      ? {
+          rainfallTodayMm: observed.rainfallTodayMm,
+          antecedentRain3dMm: observed.antecedentRain3dMm,
+          antecedentRain7dMm: observed.antecedentRain7dMm,
+          antecedentRain30dMm: observed.antecedentRain30dMm,
+          soilMoisturePercent: observed.soilMoisturePercent,
+          nextDayRainfallMm: firstForecastDay?.rainfallMm ?? null,
+          nextDayTmaxC: firstForecastDay?.tmaxC ?? null,
+          nextDayTminC: firstForecastDay?.tminC ?? null,
+        }
+      : null,
+    operatingThreshold: payload.forecast.operatingThreshold ?? null,
     modelWarning: payload.forecast.warning ?? null,
     // `kind` is what the server actually did. Older payloads that predate it
     // report nothing rather than being optimistically labelled.
@@ -167,7 +216,7 @@ export function snapshotFromApiResponse(
   };
 }
 
-export function useOutlookFeed(locationCode: string) {
+export function useOutlookFeed(locationCode: string, horizonDays: 3 | 7 = 7) {
   const { getIdToken } = useFirebaseAuth();
   const [snapshot, setSnapshot] = useState<OutlookSnapshot | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -190,7 +239,7 @@ export function useOutlookFeed(locationCode: string) {
           "content-type": "application/json",
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({ locationCode }),
+        body: JSON.stringify({ locationCode, horizonDays }),
       });
       const payload = (await response.json()) as ForecastApiResponse;
 
@@ -211,7 +260,7 @@ export function useOutlookFeed(locationCode: string) {
     } finally {
       setIsRunning(false);
     }
-  }, [getIdToken, locationCode]);
+  }, [getIdToken, horizonDays, locationCode]);
 
   const adopt = useCallback((incoming: OutlookSnapshot) => {
     setSnapshot((current) =>
@@ -267,6 +316,8 @@ export function useStoredOutlook(
       alerts: data.alerts,
       warnings: [],
       observed: null,
+      modelInputs: null,
+      operatingThreshold: data.operatingThreshold ?? null,
       modelWarning: null,
       persistence: { kind: "convex", stored: true },
     };

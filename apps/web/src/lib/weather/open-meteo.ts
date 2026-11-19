@@ -1,7 +1,8 @@
 /**
  * Open-Meteo adapter — the real, online weather source.
  *
- * One request returns 30 past days *and* 7 forecast days for a point, which is
+ * One request returns 30 past days *and* 8 forecast-calendar days for a point,
+ * including today. RiverGuard removes today and keeps seven future days, which is
  * exactly what the model needs: the antecedent 3/7/30-day sums come from the
  * past window, and the forecast window is what a user asked for.
  *
@@ -20,12 +21,14 @@ import { WeatherProviderError } from "./types";
 
 const ENDPOINT = "https://api.open-meteo.com/v1/forecast";
 const PAST_DAYS = 30;
-const FORECAST_DAYS = 7;
+const FUTURE_DAYS = 7;
+// Open-Meteo counts today inside `forecast_days`, so request one extra calendar
+// day to obtain seven dates after today.
+const PROVIDER_FORECAST_DAYS = FUTURE_DAYS + 1;
 const DAILY_VARIABLES = [
   "precipitation_sum",
   "temperature_2m_max",
   "temperature_2m_min",
-  "et0_fao_evapotranspiration",
 ].join(",");
 
 /** Soil-moisture bucket constants, identical to data/generate_dataset.py. */
@@ -62,7 +65,10 @@ function round(value: number, digits = 1): number {
 export function openMeteoProvider(options?: {
   timeoutMs?: number;
 }): WeatherProvider {
-  const timeoutMs = options?.timeoutMs ?? 8000;
+  // Open-Meteo can take longer when returning the 30-day history plus the
+  // seven-day forecast. Keep the request bounded, but allow normal network
+  // latency before falling back to the explicitly labelled fixture.
+  const timeoutMs = options?.timeoutMs ?? 20000;
 
   return {
     name: "open-meteo" as const,
@@ -73,7 +79,7 @@ export function openMeteoProvider(options?: {
       url.searchParams.set("longitude", String(location.longitude));
       url.searchParams.set("daily", DAILY_VARIABLES);
       url.searchParams.set("past_days", String(PAST_DAYS));
-      url.searchParams.set("forecast_days", String(FORECAST_DAYS));
+      url.searchParams.set("forecast_days", String(PROVIDER_FORECAST_DAYS));
       url.searchParams.set("timezone", location.timezone);
 
       let response: Response;
@@ -120,7 +126,7 @@ export function openMeteoProvider(options?: {
       const observed = summarise(historyRain, et0.slice(0, todayIndex + 1));
 
       const forecastDays: DailyWeatherPoint[] = days
-        .slice(todayIndex + 1, todayIndex + 1 + FORECAST_DAYS)
+        .slice(todayIndex + 1, todayIndex + 1 + FUTURE_DAYS)
         .map((date, offset) => {
           const index = todayIndex + 1 + offset;
           return {

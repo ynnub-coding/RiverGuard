@@ -29,6 +29,7 @@ export const dynamic = "force-dynamic";
 
 interface ForecastRequestBody {
   locationCode?: string;
+  horizonDays?: number;
 }
 
 export async function POST(request: Request) {
@@ -53,6 +54,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const horizonDays = body.horizonDays ?? 7;
+  if (horizonDays !== 3 && horizonDays !== 7) {
+    return NextResponse.json(
+      { error: "horizonDays must be either 3 or 7." },
+      { status: 400 },
+    );
+  }
+
   let bundle: WeatherBundle;
   try {
     bundle = await getWeatherBundle(location);
@@ -69,6 +78,10 @@ export async function POST(request: Request) {
       { status: 502 },
     );
   }
+
+  // The provider supplies the maximum supported window. Score and persist only
+  // the horizon the researcher confirmed on the review screen.
+  bundle = { ...bundle, days: bundle.days.slice(0, horizonDays) };
 
   // The provider window is the model input, unchanged: `bundle.observed` holds
   // today's rain, the antecedent sums and soil moisture derived from the same
@@ -92,10 +105,9 @@ export async function POST(request: Request) {
   }
 
   const issueDate = bundle.asOf;
-  const accessToken = request.headers.get("authorization")?.replace(
-    /^Bearer\s+/i,
-    "",
-  );
+  const accessToken = request.headers
+    .get("authorization")
+    ?.replace(/^Bearer\s+/i, "");
   const persistence = await persistOutlook(
     bundle,
     forecast,
