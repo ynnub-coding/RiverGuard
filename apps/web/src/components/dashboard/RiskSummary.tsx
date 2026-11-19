@@ -10,7 +10,6 @@
 
 import Link from "next/link";
 
-import { BuildStamp } from "@/components/BuildStamp";
 import { StatusLabel } from "@/components/ui";
 import { DEFAULT_LOCATION, LOCATIONS } from "@/lib/locations";
 import { useOutlookFeed, type OutlookSource } from "@/lib/outlook";
@@ -192,7 +191,6 @@ export function RiskSummary({
                   model {snapshot.modelVersion ?? "unknown"} ·{" "}
                   {snapshot.provider}
                 </span>
-                <BuildStamp className="text-metadata ml-auto text-muted" />
               </>
             ) : null}
           </div>

@@ -12,7 +12,7 @@ import {
 import { AdminScreen, LguScreen, ResidentScreen } from "./RoleScreens";
 import { ResearcherScreen } from "./ResearcherScreens";
 
-const productRoles: ProductRole[] = ["lgu", "resident", "admin"];
+const productRoles: ProductRole[] = ["lgu", "resident", "researcher", "admin"];
 
 export function isProductRole(value: string): value is ProductRole {
   return productRoles.includes(value as ProductRole);
@@ -52,9 +52,9 @@ export function PrototypeRouter({
   }
   if (section === "researcher") {
     return (
-      <WorkspaceGate role="admin">
-        <AppShell role="admin">
-          <main className="p-4 sm:p-5">
+      <WorkspaceGate role="researcher">
+        <AppShell role="researcher" variant="research">
+          <main className="workspace-page mx-auto min-h-screen max-w-[96rem] p-4 sm:p-5 lg:p-6">
             <ResearcherScreen segments={segments} />
           </main>
         </AppShell>
@@ -64,8 +64,17 @@ export function PrototypeRouter({
   if (isProductRole(section)) {
     return (
       <WorkspaceGate role={section}>
-        <AppShell role={section}>
-          <main className="p-4 sm:p-5">
+        <AppShell
+          role={section}
+          variant={
+            section === "researcher"
+              ? "research"
+              : section === "resident"
+                ? "resident"
+                : "default"
+          }
+        >
+          <main className="workspace-page mx-auto min-h-screen max-w-[96rem] p-4 sm:p-5 lg:p-6">
             {section === "resident" ? (
               <ResidentScreen segments={segments} />
             ) : null}

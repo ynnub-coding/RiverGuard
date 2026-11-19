@@ -45,7 +45,7 @@ export function ActionLink({
     <Link
       href={href}
       className={cx(
-        "text-button inline-flex min-h-8 items-center justify-center gap-1.5 rounded-control px-3 transition-colors",
+        "role-action-link text-button inline-flex min-h-8 items-center justify-center gap-1.5 rounded-control px-3 text-center transition-colors",
         actionClasses[variant],
         className,
       )}
@@ -59,26 +59,151 @@ export function PageHeading({
   actions,
   description,
   eyebrow,
+  notice,
   title,
 }: {
   actions?: ReactNode;
   description: string;
   eyebrow?: string;
+  notice?: ReactNode;
   title: string;
 }) {
   return (
-    <header className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div className="max-w-3xl">
-        {eyebrow ? (
-          <p className="text-metadata mb-1 font-semibold uppercase tracking-[0.12em] text-brand-secondary">
-            {eyebrow}
+    <WorkspaceHero
+      actions={actions}
+      description={description}
+      eyebrow={eyebrow}
+      notice={notice}
+      title={title}
+    />
+  );
+}
+
+export function WorkspaceHero({
+  actions,
+  children,
+  className,
+  description,
+  eyebrow,
+  notice,
+  title,
+}: {
+  actions?: ReactNode;
+  children?: ReactNode;
+  className?: string;
+  description: string;
+  eyebrow?: string;
+  notice?: ReactNode;
+  title: string;
+}) {
+  return (
+    <section className={cx("role-page-heading mb-4", className)}>
+      <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-3xl">
+          {eyebrow ? (
+            <p className="role-page-eyebrow text-metadata mb-1 font-semibold uppercase tracking-[0.12em] text-brand-secondary">
+              {eyebrow}
+            </p>
+          ) : null}
+          <h1 className="role-page-title text-page-title tracking-[-0.03em]">
+            {title}
+          </h1>
+          <p className="role-page-description text-body mt-1 max-w-2xl text-muted">
+            {description}
           </p>
+          {notice ? <div className="mt-4 max-w-3xl">{notice}</div> : null}
+        </div>
+        {actions ? (
+          <div className="role-page-actions flex flex-wrap gap-2">
+            {actions}
+          </div>
         ) : null}
-        <h1 className="text-page-title tracking-[-0.03em]">{title}</h1>
-        <p className="text-body mt-1 max-w-2xl text-muted">{description}</p>
+      </header>
+      {children ? <div className="mt-5">{children}</div> : null}
+    </section>
+  );
+}
+
+export function WorkspaceChartSection({
+  children,
+  className,
+  description,
+  eyebrow,
+  gridClassName,
+  meta,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  description?: string;
+  eyebrow?: string;
+  gridClassName?: string;
+  meta?: ReactNode;
+  title: string;
+}) {
+  return (
+    <section
+      className={cx(
+        "role-chart-section mt-4 rounded-[1.35rem] bg-white p-4 shadow-[0_10px_35px_rgba(7,42,76,0.055)] ring-1 ring-[#0b3358]/10 sm:p-5",
+        className,
+      )}
+    >
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          {eyebrow ? (
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#147384]">
+              {eyebrow}
+            </p>
+          ) : null}
+          <h2 className="mt-1 text-xl font-semibold tracking-[-0.03em] text-[#092847]">
+            {title}
+          </h2>
+          {description ? (
+            <p className="mt-1 text-sm leading-6 text-[#53697d]">
+              {description}
+            </p>
+          ) : null}
+        </div>
+        {meta}
+      </header>
+      <div className={cx("mt-5 grid gap-4 lg:grid-cols-2", gridClassName)}>
+        {children}
       </div>
-      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
-    </header>
+    </section>
+  );
+}
+
+export function WorkspaceChartPanel({
+  children,
+  className,
+  description,
+  meta,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  description?: string;
+  meta?: ReactNode;
+  title: string;
+}) {
+  return (
+    <article
+      className={cx(
+        "min-w-0 rounded-[1rem] border border-[#d7e2e9] p-4",
+        className,
+      )}
+    >
+      <header className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-section text-[#092847]">{title}</h3>
+          {description ? (
+            <p className="text-body mt-0.5 text-[#657d90]">{description}</p>
+          ) : null}
+        </div>
+        {meta}
+      </header>
+      {children}
+    </article>
   );
 }
 
@@ -98,16 +223,22 @@ export function Surface({
   return (
     <section
       className={cx(
-        "rounded-panel border border-line bg-canvas p-4",
+        "role-surface rounded-panel border border-line bg-canvas p-4",
         className,
       )}
     >
       {title || action ? (
         <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
           <div>
-            {title ? <h2 className="text-section">{title}</h2> : null}
+            {title ? (
+              <h2 className="role-surface-title text-section text-ink">
+                {title}
+              </h2>
+            ) : null}
             {description ? (
-              <p className="text-metadata mt-0.5 text-muted">{description}</p>
+              <p className="role-surface-description text-body mt-1 text-muted">
+                {description}
+              </p>
             ) : null}
           </div>
           {action}
@@ -119,12 +250,14 @@ export function Surface({
 }
 
 export function Metric({
+  icon,
   label,
   value,
   detail,
   tone = "neutral",
 }: {
   detail: string;
+  icon?: ReactNode;
   label: string;
   tone?: "neutral" | "primary" | "secondary" | "warning" | "danger";
   value: string;
@@ -138,10 +271,21 @@ export function Metric({
   };
 
   return (
-    <div className="rounded-panel border border-line bg-canvas p-3.5">
-      <p className="text-metadata text-muted">{label}</p>
-      <p className={cx("text-major-status mt-1", toneClasses[tone])}>{value}</p>
-      <p className="text-metadata mt-1 text-muted">{detail}</p>
+    <div className="role-metric rounded-panel border border-line bg-canvas p-3.5">
+      <div className={cx(icon ? "flex items-start gap-3" : undefined)}>
+        {icon ? (
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#e5f1f5] text-[#147384]">
+            {icon}
+          </span>
+        ) : null}
+        <div className="min-w-0">
+          <p className="text-metadata text-muted">{label}</p>
+          <p className={cx("text-major-status mt-1", toneClasses[tone])}>
+            {value}
+          </p>
+          <p className="text-metadata mt-1 text-muted">{detail}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -200,15 +344,17 @@ export function Notice({
   return (
     <div
       className={cx(
-        "flex items-start gap-2.5 rounded-control border px-3 py-2.5",
+        "role-notice flex items-start gap-2.5 rounded-control border px-3 py-2.5",
         toneClasses[tone],
         className,
       )}
     >
       <Icon aria-hidden="true" size={17} className="mt-0.5 shrink-0" />
       <div>
-        <p className="text-button">{title}</p>
-        <div className="text-metadata mt-0.5 text-current/80">{children}</div>
+        <p className="text-sm font-semibold leading-5">{title}</p>
+        <div className="mt-0.5 text-sm leading-5 text-current/80">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -231,6 +377,7 @@ export function TextField({
     <div className="grid gap-1.5">
       <label htmlFor={id} className="text-button">
         {label}
+        {props.required ? <span className="text-danger"> *</span> : null}
       </label>
       <input
         {...props}
@@ -244,13 +391,13 @@ export function TextField({
         )}
       />
       {error ? (
-        <p id={`${id}-error`} className="text-metadata text-danger">
+        <div id={`${id}-error`} className="text-metadata text-danger">
           {error}
-        </p>
+        </div>
       ) : hint ? (
-        <p id={`${id}-hint`} className="text-metadata text-muted">
+        <div id={`${id}-hint`} className="text-metadata text-muted">
           {hint}
-        </p>
+        </div>
       ) : null}
     </div>
   );
@@ -263,8 +410,8 @@ export function PasswordField({
   label,
   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
-  error?: string;
-  hint?: string;
+  error?: ReactNode;
+  hint?: ReactNode;
   id: string;
   label: string;
 }) {
@@ -274,6 +421,7 @@ export function PasswordField({
     <div className="grid gap-1.5">
       <label htmlFor={id} className="text-button">
         {label}
+        {props.required ? <span className="text-danger"> *</span> : null}
       </label>
       <div className="relative">
         <input
@@ -303,13 +451,13 @@ export function PasswordField({
         </button>
       </div>
       {error ? (
-        <p id={`${id}-error`} className="text-metadata text-danger">
+        <div id={`${id}-error`} className="text-metadata text-danger">
           {error}
-        </p>
+        </div>
       ) : hint ? (
-        <p id={`${id}-hint`} className="text-metadata text-muted">
+        <div id={`${id}-hint`} className="text-metadata text-muted">
           {hint}
-        </p>
+        </div>
       ) : null}
     </div>
   );
@@ -331,6 +479,7 @@ export function TextAreaField({
     <div className="grid gap-1.5">
       <label htmlFor={id} className="text-button">
         {label}
+        {props.required ? <span className="text-danger"> *</span> : null}
       </label>
       <textarea
         {...props}
@@ -367,6 +516,7 @@ export function SelectControl({
     <div className="grid gap-1.5">
       <label htmlFor={id} className="text-button">
         {label}
+        {props.required ? <span className="text-danger"> *</span> : null}
       </label>
       <div className="relative">
         <select
@@ -403,16 +553,19 @@ export function CheckControl({
   return (
     <label
       htmlFor={id}
-      className="flex items-start gap-2 rounded-control border border-line bg-canvas px-3 py-2.5"
+      className="check-control flex cursor-pointer items-start gap-3 rounded-control border border-line bg-canvas px-3 py-2.5 transition"
     >
       <input
         {...props}
         id={id}
         type="checkbox"
-        className="mt-0.5 size-4 accent-brand-secondary"
+        className="auth-checkbox mt-0.5 size-[18px]"
       />
       <span>
-        <span className="text-button block">{label}</span>
+        <span className="text-button block">
+          {label}
+          {props.required ? <span className="text-danger"> *</span> : null}
+        </span>
         {description ? (
           <span className="text-metadata mt-0.5 block text-muted">
             {description}

@@ -10,7 +10,6 @@ import {
   GearSix,
   House,
   List,
-  MagnifyingGlass,
   MapTrifold,
   Play,
   Question,
@@ -19,14 +18,13 @@ import {
   SlidersHorizontal,
   UserCircle,
   UsersThree,
-  WaveSine,
   X,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import Image from "next/image";
 
-import { BuildStamp } from "@/components/BuildStamp";
 import { usePathname } from "next/navigation";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { can, type ProductRole, roleDefinitions } from "@/data/prototype";
 import { cx } from "@/lib/classnames";
@@ -34,40 +32,8 @@ import { cx } from "@/lib/classnames";
 interface AppShellProps {
   children: ReactNode;
   role: ProductRole;
+  variant?: "default" | "research" | "resident";
 }
-
-const supplementalSearchItems: Record<
-  ProductRole,
-  { href: string; label: string }[]
-> = {
-  lgu: [
-    { label: "Risk map", href: "/lgu/map" },
-    { label: "Assigned locations", href: "/lgu/locations" },
-    { label: "Forecast outlook", href: "/lgu/outlook" },
-    { label: "Review queue", href: "/lgu/reviews" },
-    { label: "Alerts and notes", href: "/lgu/alerts" },
-  ],
-  resident: [
-    { label: "Locations", href: "/resident/locations" },
-    { label: "Seven-day outlook", href: "/resident/outlook" },
-    { label: "Hazard context", href: "/resident/hazard-context" },
-    { label: "Resident preferences", href: "/resident/preferences" },
-  ],
-  admin: [
-    { label: "Run forecast", href: "/admin/research/forecast/new" },
-    { label: "Forecast runs", href: "/admin/research/runs" },
-    { label: "Map and locations", href: "/admin/research/map" },
-    { label: "Historical data", href: "/admin/research/history" },
-    { label: "User requests", href: "/admin/requests" },
-    { label: "Users and roles", href: "/admin/users" },
-    { label: "Supported locations", href: "/admin/locations" },
-    { label: "Data sources", href: "/admin/data-sources" },
-    { label: "Provider configuration", href: "/admin/provider" },
-    { label: "Model versions", href: "/admin/models" },
-    { label: "Hazard layers", href: "/admin/hazard-layers" },
-    { label: "System settings", href: "/admin/settings" },
-  ],
-};
 
 const settingsNavigation = [
   {
@@ -95,18 +61,22 @@ const settingsNavigation = [
 function isActive(pathname: string, href: string) {
   if (pathname === "/" && href === "/admin") return true;
   if (
-    href === "/admin/research" &&
-    (pathname === "/admin/research" ||
-      pathname.startsWith("/admin/research/map") ||
-      pathname.startsWith("/admin/research/locations") ||
-      pathname.startsWith("/admin/research/history"))
+    href === "/researcher" &&
+    [
+      "/researcher",
+      "/researcher/forecast",
+      "/researcher/map",
+      "/researcher/locations",
+      "/researcher/history",
+    ].some((route) =>
+      route === "/researcher" ? pathname === route : pathname.startsWith(route),
+    )
   )
     return true;
   if (
-    href === "/admin/research/runs" &&
-    (pathname.startsWith("/admin/research/runs") ||
-      pathname.startsWith("/admin/research/forecast") ||
-      pathname.startsWith("/admin/research/compare"))
+    href === "/researcher/runs" &&
+    (pathname.startsWith("/researcher/runs") ||
+      pathname.startsWith("/researcher/compare"))
   )
     return true;
   if (
@@ -177,67 +147,64 @@ function navigationIcon(label: string) {
   return <SlidersHorizontal size={18} />;
 }
 
-export function AppShell({ children, role }: AppShellProps) {
+function SidebarItemContent({
+  icon,
+  label,
+}: {
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <>
+      <span className="role-sidebar-icon" aria-hidden="true">
+        <span className="role-sidebar-icon-glyph">{icon}</span>
+      </span>
+      <span className="role-sidebar-label">{label}</span>
+    </>
+  );
+}
+
+export function AppShell({
+  children,
+  role,
+  variant = "default",
+}: AppShellProps) {
   const pathname = usePathname();
+  const researchShell = variant === "research";
+  const residentShell = variant === "resident";
+  const structuredShell = researchShell || residentShell;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [settingsMenuPinned, setSettingsMenuPinned] = useState(false);
-  const [query, setQuery] = useState("");
   const roleDefinition = roleDefinitions[role];
   const navigationItems = roleDefinition.navigation.filter(
     (item) => !item.capability || can(role, item.capability),
   );
 
-  const searchItems = useMemo(() => {
-    const items = [
-      ...navigationItems,
-      ...supplementalSearchItems[role],
-      { label: "Profile and account settings", href: "/settings/profile" },
-      { label: "Notification preferences", href: "/settings/notifications" },
-      { label: "Accessibility preferences", href: "/settings/accessibility" },
-      { label: "Security, password & access", href: "/settings/security" },
-      { label: "Methodology and limitations", href: "/methodology" },
-    ];
-    return Array.from(
-      new Map(
-        items.map((item) => [`${item.href}-${item.label}`, item]),
-      ).values(),
-    );
-  }, [navigationItems, role]);
-
-  const filteredItems = searchItems.filter((item) =>
-    item.label.toLowerCase().includes(query.trim().toLowerCase()),
-  );
-
-  useEffect(() => {
-    function closeOnEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") setSearchOpen(false);
-    }
-    window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
-  }, []);
-
-  function openSearch() {
-    setQuery("");
-    setSearchOpen(true);
-    setMobileOpen(false);
-  }
-
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <aside className="group/sidebar fixed inset-y-0 left-0 z-50 hidden w-14 overflow-hidden border-r border-line bg-canvas shadow-sm transition-[width] duration-200 hover:w-56 focus-within:w-56 md:flex md:flex-col">
+    <div
+      className={cx(
+        "app-shell workspace-shell min-h-screen bg-[#edf5f9] text-ink",
+        residentShell ? "resident-shell" : undefined,
+        structuredShell ? "structured-shell" : undefined,
+      )}
+    >
+      <aside className="group/sidebar fixed top-4 bottom-4 left-4 z-50 hidden w-[4.5rem] overflow-hidden rounded-[1.35rem] border border-white/10 bg-[#092847] text-white shadow-[0_18px_50px_rgba(7,42,76,0.22)] transition-[width] duration-200 hover:w-[15rem] focus-within:w-[15rem] md:flex md:flex-col">
         <Link
           href={`/${role}`}
-          className="flex min-h-16 items-center gap-3 border-b border-line px-[17px]"
+          className="flex min-h-[4.5rem] items-center gap-3 border-b border-white/10 px-[10px]"
           aria-label="RiverGuard home"
         >
-          <WaveSine
-            aria-hidden="true"
-            size={24}
-            weight="bold"
-            className="shrink-0"
-          />
+          <span className="relative block size-11 shrink-0 overflow-hidden bg-white ring-1 ring-[#0b3358]/10">
+            <Image
+              src="/images/riverguard-sidebar.jpg"
+              alt=""
+              width={1024}
+              height={1024}
+              priority
+              className="h-full w-full object-contain p-1"
+            />
+          </span>
           <span className="text-section whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
             RiverGuard
           </span>
@@ -247,16 +214,6 @@ export function AppShell({ children, role }: AppShellProps) {
           aria-label={`${roleDefinition.label} navigation`}
           className="flex-1 overflow-x-hidden overflow-y-auto px-2 py-3"
         >
-          <button
-            type="button"
-            onClick={openSearch}
-            className="text-navigation mb-2 flex min-h-9 w-full items-center gap-3 rounded-control px-3 text-muted hover:bg-canvas-soft hover:text-ink"
-          >
-            <MagnifyingGlass size={18} className="shrink-0" />
-            <span className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
-              Search
-            </span>
-          </button>
           <div className="grid gap-1">
             {navigationItems.map((item) => {
               const active = isActive(pathname, item.href);
@@ -267,34 +224,36 @@ export function AppShell({ children, role }: AppShellProps) {
                   aria-current={active ? "page" : undefined}
                   title={item.label}
                   className={cx(
-                    "text-navigation flex min-h-9 items-center gap-3 rounded-control px-3 transition-colors",
+                    "role-sidebar-item text-navigation transition-colors",
+                    "unified-nav-item",
                     active
-                      ? "bg-brand-primary text-white"
-                      : "text-muted hover:bg-canvas-soft hover:text-ink",
+                      ? "bg-[#168191] text-white"
+                      : "text-white/65 hover:bg-white/10 hover:text-white",
                   )}
                 >
-                  <span aria-hidden="true" className="shrink-0">
-                    {navigationIcon(item.label)}
-                  </span>
-                  <span className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
-                    {item.label}
-                  </span>
+                  <SidebarItemContent
+                    icon={navigationIcon(item.label)}
+                    label={item.label}
+                  />
                 </Link>
               );
             })}
           </div>
         </nav>
 
-        <div className="grid gap-1 border-t border-line p-2">
+        <div className="grid gap-1 border-t border-white/10 p-2">
           <Link
             href={`/methodology?from=/${role}`}
             title="Help and limitations"
-            className="text-navigation flex min-h-9 items-center gap-3 rounded-control px-3 text-muted hover:bg-canvas-soft hover:text-ink"
+            className={cx(
+              "role-sidebar-item text-navigation",
+              "text-white/65 hover:bg-white/10 hover:text-white",
+            )}
           >
-            <Question size={18} className="shrink-0" />
-            <span className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
-              Help & limitations
-            </span>
+            <SidebarItemContent
+              icon={<Question size={18} />}
+              label="Help & limitations"
+            />
           </Link>
           <div
             className="relative"
@@ -313,22 +272,25 @@ export function AppShell({ children, role }: AppShellProps) {
                 setSettingsMenuOpen(true);
               }}
               className={cx(
-                "text-navigation flex min-h-10 w-full items-center gap-3 rounded-control px-3 hover:bg-canvas-soft",
+                "role-sidebar-item text-navigation hover:bg-canvas-soft",
                 pathname.startsWith("/settings")
-                  ? "bg-brand-secondary-soft text-brand-primary"
-                  : "text-muted hover:text-ink",
+                  ? "bg-[#168191] text-white"
+                  : "text-white/65 hover:bg-white/10 hover:text-white",
               )}
             >
-              <GearSix size={19} className="shrink-0" />
-              <span className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
-                Settings
-              </span>
+              <SidebarItemContent
+                icon={<GearSix size={19} />}
+                label="Settings"
+              />
             </button>
             {settingsMenuOpen ? (
               <div
                 role="dialog"
                 aria-label="Settings menu"
-                className="fixed bottom-3 left-64 z-[80] w-64 rounded-panel border border-line bg-canvas p-2 shadow-xl"
+                className={cx(
+                  "fixed bottom-3 z-[80] w-64 rounded-panel border border-line bg-canvas p-2 text-ink shadow-xl",
+                  "left-[16.5rem]",
+                )}
               >
                 <p className="text-metadata px-2 pb-2 font-semibold uppercase tracking-[0.12em] text-muted">
                   Settings
@@ -361,12 +323,12 @@ export function AppShell({ children, role }: AppShellProps) {
           <Link
             href="/auth/logout"
             title="Sign out"
-            className="text-navigation flex min-h-9 items-center gap-3 rounded-control px-3 text-muted hover:bg-canvas-soft hover:text-ink"
+            className={cx(
+              "role-sidebar-item text-navigation",
+              "text-white/65 hover:bg-white/10 hover:text-white",
+            )}
           >
-            <SignOut size={18} className="shrink-0" />
-            <span className="whitespace-nowrap opacity-0 transition-opacity group-hover/sidebar:opacity-100 group-focus-within/sidebar:opacity-100">
-              Sign out
-            </span>
+            <SidebarItemContent icon={<SignOut size={18} />} label="Sign out" />
           </Link>
         </div>
       </aside>
@@ -377,18 +339,19 @@ export function AppShell({ children, role }: AppShellProps) {
           aria-label="RiverGuard home"
           className="flex items-center gap-2"
         >
-          <WaveSine size={25} weight="bold" />
+          <span className="relative block size-9 overflow-hidden rounded-lg bg-white ring-1 ring-[#0b3358]/10">
+            <Image
+              src="/images/riverguard-logo.jpg"
+              alt=""
+              width={1024}
+              height={1024}
+              priority
+              className="absolute left-1/2 top-[68%] w-[68px] max-w-none -translate-x-1/2 -translate-y-1/2"
+            />
+          </span>
           <span className="text-section">RiverGuard</span>
         </Link>
         <div className="ml-auto flex gap-1.5">
-          <button
-            type="button"
-            onClick={openSearch}
-            aria-label="Search RiverGuard"
-            className="inline-flex size-9 items-center justify-center rounded-control border border-line"
-          >
-            <MagnifyingGlass size={17} />
-          </button>
           <button
             type="button"
             onClick={() => setMobileOpen((open) => !open)}
@@ -440,80 +403,7 @@ export function AppShell({ children, role }: AppShellProps) {
         </div>
       ) : null}
 
-      <div className="min-w-0 md:pl-14">
-        {children}
-        <footer className="text-metadata flex flex-wrap items-center justify-end gap-2 border-t border-line px-4 py-2 text-muted">
-          <BuildStamp />
-        </footer>
-      </div>
-
-      {searchOpen ? (
-        <div
-          className="fixed inset-0 z-[70] flex items-start justify-center bg-ink/25 px-4 pt-[12vh] backdrop-blur-[2px]"
-          onMouseDown={() => setSearchOpen(false)}
-        >
-          <section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="search-title"
-            onMouseDown={(event) => event.stopPropagation()}
-            className="w-full max-w-xl overflow-hidden rounded-panel border border-line bg-canvas shadow-2xl"
-          >
-            <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-              <MagnifyingGlass size={19} className="text-muted" />
-              <div className="min-w-0 flex-1">
-                <h2 id="search-title" className="sr-only">
-                  Search RiverGuard pages
-                </h2>
-                <input
-                  autoFocus
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search pages and settings…"
-                  className="text-body w-full border-0 bg-transparent py-1 outline-none placeholder:text-muted"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setSearchOpen(false)}
-                aria-label="Close search"
-                className="inline-flex size-7 items-center justify-center rounded-control hover:bg-canvas-soft"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto p-2">
-              {filteredItems.length ? (
-                filteredItems.map((item) => (
-                  <Link
-                    key={`${item.href}-${item.label}`}
-                    href={item.href}
-                    onClick={() => setSearchOpen(false)}
-                    className="flex items-center gap-3 rounded-control px-3 py-2.5 hover:bg-canvas-soft"
-                  >
-                    <span className="text-brand-secondary">
-                      {navigationIcon(item.label)}
-                    </span>
-                    <span>
-                      <span className="text-button block">{item.label}</span>
-                      <span className="text-metadata block text-muted">
-                        {item.href}
-                      </span>
-                    </span>
-                  </Link>
-                ))
-              ) : (
-                <p className="text-body px-3 py-8 text-center text-muted">
-                  No matching RiverGuard page.
-                </p>
-              )}
-            </div>
-            <p className="text-metadata border-t border-line bg-canvas-soft px-4 py-2 text-muted">
-              Search navigates between available pages. Press Esc to close.
-            </p>
-          </section>
-        </div>
-      ) : null}
+      <div className="min-w-0 md:pl-[5.75rem]">{children}</div>
     </div>
   );
 }
