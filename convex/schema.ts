@@ -5,10 +5,12 @@ import {
   alertStatusValidator,
   dataQualityValidator,
   hazardLayerKindValidator,
+  lguReviewStatusValidator,
   modelStatusValidator,
   modelTypeValidator,
   riskLevelValidator,
   userRoleValidator,
+  userRoleProfileValidator,
   userStatusValidator,
 } from "./validators";
 
@@ -33,6 +35,7 @@ export default defineSchema({
     displayName: v.string(),
     role: userRoleValidator,
     status: v.optional(userStatusValidator),
+    roleProfile: v.optional(userRoleProfileValidator),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -172,6 +175,17 @@ export default defineSchema({
   })
     .index("by_location_created_at", ["locationCode", "createdAt"])
     .index("by_status_created_at", ["status", "createdAt"]),
+
+  lguReviews: defineTable({
+    runId: v.id("forecastRuns"),
+    reviewerId: v.id("users"),
+    locationCode: v.string(),
+    status: lguReviewStatusValidator,
+    notes: v.string(),
+    reviewedAt: v.number(),
+  })
+    .index("by_run", ["runId"])
+    .index("by_location_reviewed_at", ["locationCode", "reviewedAt"]),
 
   hazardLayers: defineTable({
     slug: v.string(),
