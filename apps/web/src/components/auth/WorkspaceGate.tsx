@@ -6,12 +6,20 @@ import {
 } from "convex/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import type { FunctionReturnType } from "convex/server";
+import { createContext, useContext, useEffect, type ReactNode } from "react";
 import { useFirebaseAuth } from "./FirebaseAuthProvider";
 import { api } from "../../../../../convex/_generated/api";
 import { convexConfigured } from "@/lib/convex-config";
 import { accountDestination } from "@/lib/account-client";
 import type { ProductRole } from "@/data/prototype";
+type Account = NonNullable<FunctionReturnType<typeof api.users.getCurrent>>;
+const WorkspaceAccount = createContext<Account | null>(null);
+export function useWorkspaceAccount() {
+  const account = useContext(WorkspaceAccount);
+  if (!account) throw new Error("An authorized workspace account is required.");
+  return account;
+}
 type Props = { role: ProductRole; children: ReactNode };
 export function WorkspaceGate(props: Props) {
   return convexConfigured ? (
@@ -55,7 +63,12 @@ function Gate({ role, children }: Props) {
   useEffect(() => {
     if (destination && destination !== "allowed") router.replace(destination);
   }, [destination, router]);
-  if (destination === "allowed") return children;
+  if (destination === "allowed" && result.status === "success" && result.data)
+    return (
+      <WorkspaceAccount.Provider key={result.data._id} value={result.data}>
+        {children}
+      </WorkspaceAccount.Provider>
+    );
   return (
     <main className="p-6">
       {!isWebSocketConnected ||

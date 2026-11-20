@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { signupRole, userRoleProfileValidator } from "./validators";
-import { assignedLocationCodes } from "./lgu";
+import { approvedLguLocations, assignedLocationCodes } from "./lgu";
 import { currentAccount, requireCurrentUser, requireRole } from "./auth";
 import { validateApplication } from "./applications";
 
@@ -14,7 +14,7 @@ export const getCurrent = query({
           ...user,
           assignedLocations:
             user.status === "active"
-              ? await assignedLocationCodes(ctx, user)
+              ? await approvedLguLocations(ctx, user)
               : null,
         }
       : null;
@@ -62,7 +62,7 @@ export const register = mutation({
 });
 export const updateCurrentProfile = mutation({
   args: {
-    displayName: v.string(),
+    displayName: v.optional(v.string()),
     roleProfile: v.optional(userRoleProfileValidator),
   },
   returns: v.object({
@@ -71,8 +71,12 @@ export const updateCurrentProfile = mutation({
   handler: async (ctx, args) => {
     const existing = await requireCurrentUser(ctx);
     await ctx.db.patch(existing._id, {
-      displayName: args.displayName,
-      ...(args.roleProfile ? { roleProfile: args.roleProfile } : {}),
+      ...(args.displayName !== undefined
+        ? { displayName: args.displayName }
+        : {}),
+      ...(args.roleProfile
+        ? { roleProfile: { ...existing.roleProfile, ...args.roleProfile } }
+        : {}),
       updatedAt: Date.now(),
     });
 

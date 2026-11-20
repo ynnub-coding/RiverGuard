@@ -25,9 +25,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { sendPasswordResetEmail, updateProfile } from "firebase/auth";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 
-import { WorkspaceGate } from "@/components/auth/WorkspaceGate";
+import {
+  WorkspaceGate,
+  useWorkspaceAccount,
+} from "@/components/auth/WorkspaceGate";
 import { AppShell } from "@/components/prototype/AppShell";
 import { Button } from "@/components/ui";
 import { useFirebaseAuth } from "@/components/auth/FirebaseAuthProvider";
@@ -1695,7 +1698,7 @@ export function SettingsScreen({ screen }: { screen?: string }) {
 
 function LiveSettingsScreen({ screen }: { screen?: string }) {
   const { user } = useFirebaseAuth();
-  const currentUser = useQuery(api.users.getCurrent, {});
+  const currentUser = useWorkspaceAccount();
   const updateCurrentProfile = useMutation(api.users.updateCurrentProfile);
   return (
     <SettingsScreenBody

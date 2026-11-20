@@ -15,7 +15,7 @@ import { useSearchParams } from "next/navigation";
 import { useMutation } from "convex/react";
 
 import { useGisLayers } from "@/lib/use-gis-layers";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { RiverMap } from "@/components/map/RiverMap";
 import { Button } from "@/components/ui";
@@ -33,6 +33,15 @@ import {
   type LguReview,
 } from "@/lib/convex-functions";
 import { useConvexQueryResult } from "@/lib/convex-query";
+import { useWorkspaceAccount } from "../auth/WorkspaceGate";
+import { api } from "../../../../../convex/_generated/api";
+import {
+  LOCATIONS,
+  locationCodeForName,
+  DEFAULT_LOCATION,
+  isLocationCode,
+  type LocationCode,
+} from "@/lib/locations";
 import { useOutlookFeed } from "@/lib/outlook";
 import type { MapLayerId } from "@/types";
 
@@ -58,17 +67,54 @@ import {
   Models,
 } from "./ResearcherScreens";
 
-function ResidentHome() {
-  const outlook = useOutlookFeed("marikina");
+type CityProps = { code: LocationCode };
+function UnsupportedCity() {
+  return (
+    <Notice title="Location outside coverage" tone="warning">
+      No flood outlook is available for your saved area. Choose a supported
+      primary city in{" "}
+      <Link href="/resident/locations" className="underline">
+        Locations
+      </Link>
+      .
+    </Notice>
+  );
+}
+
+function useSavePrimaryCity() {
+  const update = useMutation(api.users.updateCurrentProfile);
+  const pending = useRef(false);
+  const [saving, setSaving] = useState<string | null>(null),
+    [error, setError] = useState("");
+  async function save(city: string) {
+    if (pending.current) return false;
+    pending.current = true;
+    setSaving(city);
+    setError("");
+    try {
+      await update({ roleProfile: { city } });
+      return true;
+    } catch {
+      setError("Primary city could not be saved. Please try again.");
+      return false;
+    } finally {
+      pending.current = false;
+      setSaving(null);
+    }
+  }
+  return { save, saving, error };
+}
+function ResidentHome({ code, fallback }: { fallback: boolean } & CityProps) {
+  const outlook = useOutlookFeed(code);
   const snapshot = outlook.snapshot;
 
   return (
     <div className="mx-auto max-w-[96rem]">
       {convexConfigured ? (
-        <OutlookBridge locationCode="marikina" onSnapshot={outlook.adopt} />
+        <OutlookBridge locationCode={code} onSnapshot={outlook.adopt} />
       ) : null}
       <WorkspaceHero
-        eyebrow="Marikina"
+        eyebrow={LOCATIONS[code].name}
         title="My flood outlook"
         description="A simplified seven-day experimental outlook for your saved city, with official guidance kept clearly separate."
         notice={
@@ -93,9 +139,11 @@ function ResidentHome() {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           {
-            label: "Saved city",
-            value: "Marikina",
-            detail: "Primary location",
+            label: fallback ? "Default city" : "Saved city",
+            value: LOCATIONS[code].name,
+            detail: fallback
+              ? "Default location · no saved city"
+              : "Primary location",
             icon: <MapPin size={18} />,
           },
           {
@@ -140,13 +188,36 @@ function ResidentHome() {
   );
 }
 
-function ResidentLocationsWorkspace({}: {
-  initialView?: "hazard" | "locations";
-} = {}) {
-  const [saved, setSaved] = useState("Marikina");
+function ResidentCityMap({ code }: CityProps) {
   const [layer, setLayer] = useState<MapLayerId>("base");
   const [selectedDay, setSelectedDay] = useState(0);
-  const outlook = useOutlookFeed("marikina");
+  const outlook = useOutlookFeed(code);
+  return (
+    <>
+      {convexConfigured && (
+        <OutlookBridge locationCode={code} onSnapshot={outlook.adopt} />
+      )}
+      <RiverMap
+        activeLayer={layer}
+        onLayerChange={setLayer}
+        forecast={outlook.snapshot}
+        locationCode={code}
+        selectedDay={selectedDay}
+        onDayChange={setSelectedDay}
+        className="!h-[610px]"
+        hideChrome
+      />
+    </>
+  );
+}
+function ResidentLocationsWorkspace({
+  code,
+  saved,
+}: {
+  code: LocationCode | null;
+  saved: string;
+}) {
+  const { save, saving, error } = useSavePrimaryCity();
   const gis = useGisLayers();
 
   return (
@@ -169,17 +240,17 @@ function ResidentLocationsWorkspace({}: {
           </p>
         </div>
       </section>
+      {error && (
+        <p role="alert" className="text-body text-danger">
+          {error}
+        </p>
+      )}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_320px] xl:items-stretch">
-        <RiverMap
-          activeLayer={layer}
-          onLayerChange={setLayer}
-          forecast={outlook.snapshot}
-          locationCode="marikina"
-          selectedDay={selectedDay}
-          onDayChange={setSelectedDay}
-          className="!h-[610px]"
-          hideChrome
-        />
+        {code ? (
+          <ResidentCityMap key={code} code={code} />
+        ) : (
+          <UnsupportedCity />
+        )}
         <div className="grid h-[610px] gap-3 xl:grid-rows-[auto_minmax(0,1fr)]">
           <div className="grid grid-cols-2 gap-3">
             {supportedLocations.map((location) => (
@@ -199,7 +270,10 @@ function ResidentLocationsWorkspace({}: {
                     size="small"
                     variant={location.name === saved ? "quiet" : "secondary"}
                     className="mt-3 w-full"
-                    onClick={() => setSaved(location.name)}
+                    loading={saving === location.name}
+                    loadingLabel="Saving"
+                    disabled={saving !== null || saved === location.name}
+                    onClick={() => void save(location.name)}
                   >
                     {location.name === saved ? "Selected" : "Set primary"}
                   </Button>
@@ -239,17 +313,12 @@ function ResidentLocationsWorkspace({}: {
   );
 }
 
-function ResidentLocations() {
-  return <ResidentLocationsWorkspace />;
-}
-
-function HazardContext() {
-  return <ResidentLocationsWorkspace initialView="hazard" />;
-}
-
-function ResidentPreferences() {
+function ResidentPreferences({ city }: { city: string }) {
   const [saved, setSaved] = useState(false);
-  const [primaryCity, setPrimaryCity] = useState("Marikina");
+  const [draft, setDraft] = useState<string | null>(null);
+  const primaryCity = draft ?? city;
+  const { save, saving, error } = useSavePrimaryCity();
+  const [deviceError, setDeviceError] = useState("");
   const [defaultView, setDefaultView] = useState("Map");
   const [outlookNotify, setOutlookNotify] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -263,12 +332,10 @@ function ResidentPreferences() {
       const stored = JSON.parse(
         window.localStorage.getItem("riverguard:resident-preferences") ?? "{}",
       ) as {
-        primaryCity?: string;
         defaultView?: string;
         outlookNotify?: boolean;
         reducedMotion?: boolean;
       };
-      if (stored.primaryCity) setPrimaryCity(stored.primaryCity);
       if (stored.defaultView) setDefaultView(stored.defaultView);
       setOutlookNotify(Boolean(stored.outlookNotify));
       setReducedMotion(Boolean(stored.reducedMotion));
@@ -278,17 +345,24 @@ function ResidentPreferences() {
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  function savePreferences() {
-    window.localStorage.setItem(
-      "riverguard:resident-preferences",
-      JSON.stringify({
-        primaryCity,
-        defaultView,
-        outlookNotify,
-        reducedMotion,
-      }),
-    );
-    setSaved(true);
+  async function savePreferences() {
+    setSaved(false);
+    setDeviceError("");
+    if (draft !== null && !(await save(draft))) return;
+    setDraft(null);
+    try {
+      window.localStorage.setItem(
+        "riverguard:resident-preferences",
+        JSON.stringify({
+          defaultView,
+          outlookNotify,
+          reducedMotion,
+        }),
+      );
+      setSaved(true);
+    } catch {
+      setDeviceError("Device preferences could not be saved.");
+    }
   }
   return (
     <div className="mx-auto max-w-[96rem]">
@@ -312,8 +386,15 @@ function ResidentPreferences() {
             id="resident-city"
             label="Primary city"
             value={primaryCity}
-            onChange={(event) => setPrimaryCity(event.target.value)}
+            disabled={saving !== null}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              setSaved(false);
+            }}
           >
+            {!locationCodeForName(city, null) && (
+              <option value={city}>{city} (not covered)</option>
+            )}
             <option>Marikina</option>
             <option>Quezon City</option>
             <option>Manila</option>
@@ -343,12 +424,24 @@ function ResidentPreferences() {
             onChange={(event) => setReducedMotion(event.target.checked)}
           />
         </div>
-        <Button className="mt-4" size="small" onClick={savePreferences}>
+        {(error || deviceError) && (
+          <p role="alert" className="text-body text-danger">
+            {deviceError || error}
+          </p>
+        )}
+        <Button
+          className="mt-4"
+          size="small"
+          loading={saving !== null}
+          loadingLabel="Saving"
+          onClick={savePreferences}
+        >
           <FloppyDisk size={14} /> Save preferences
         </Button>
         {saved ? (
           <p className="text-metadata mt-2 text-success" role="status">
-            Preferences saved on this device.
+            Preferences saved. Display and notification preferences apply to
+            this device.
           </p>
         ) : null}
       </Surface>
@@ -357,27 +450,36 @@ function ResidentPreferences() {
 }
 
 export function ResidentScreen({ segments }: { segments: string[] }) {
+  const city = useWorkspaceAccount().roleProfile?.city?.trim() ?? "";
+  const code = city ? locationCodeForName(city, null) : DEFAULT_LOCATION;
+  const name = code ? LOCATIONS[code].name : city;
   const [screen] = segments;
-  if (!screen) return <ResidentHome />;
-  if (screen === "locations") return <ResidentLocations />;
-  if (screen === "outlook") return <ResidentHome />;
-  if (screen === "hazard-context") return <HazardContext />;
-  if (screen === "preferences") return <ResidentPreferences />;
-  return <ResidentHome />;
+  if (screen === "preferences") return <ResidentPreferences city={name} />;
+  if (screen === "locations" || screen === "hazard-context")
+    return <ResidentLocationsWorkspace code={code} saved={city ? name : ""} />;
+  return code ? (
+    <ResidentHome key={code} code={code} fallback={!city} />
+  ) : (
+    <UnsupportedCity />
+  );
 }
 
-function LguHome() {
-  const outlook = useOutlookFeed("marikina");
+function LguHome({ code }: CityProps) {
+  const { data: runs } = useConvexQueryResult(convexFunctions.recentRuns, {
+    limit: 10,
+  });
+  const cityRuns = runs?.filter((run) => run.locations.includes(code));
+  const outlook = useOutlookFeed(code);
   const snapshot = outlook.snapshot;
 
   return (
     <>
       {convexConfigured ? (
-        <OutlookBridge locationCode="marikina" onSnapshot={outlook.adopt} />
+        <OutlookBridge locationCode={code} onSnapshot={outlook.adopt} />
       ) : null}
       <PageHeading
         title="LGU overview"
-        eyebrow="Marikina assigned workspace"
+        eyebrow={`${LOCATIONS[code].name} assigned workspace`}
         description="Review the latest experimental output, quality warnings, and items awaiting an authorized assessment."
         actions={
           <ActionLink href="/lgu/outlook">
@@ -395,8 +497,14 @@ function LguHome() {
         <Metric
           icon={<ShieldCheck size={18} />}
           label="Needs review"
-          value="1"
-          detail="Assigned-area run"
+          value={
+            cityRuns
+              ? String(
+                  cityRuns.filter((r) => r.reviewStatus === "pending").length,
+                )
+              : "—"
+          }
+          detail="In recent assigned-area runs"
           tone="warning"
         />
         <Metric
@@ -409,23 +517,33 @@ function LguHome() {
         <Metric
           icon={<ShieldWarning size={18} />}
           label="Quality warnings"
-          value={snapshot?.degraded ? "1" : "0"}
+          value={snapshot ? (snapshot.degraded ? "1" : "0") : "—"}
           detail={
-            snapshot?.degraded ? "Provider degraded" : "No active warning"
+            !snapshot
+              ? "No forecast available"
+              : snapshot.degraded
+                ? "Provider degraded"
+                : "No active warning"
           }
           tone="warning"
         />
         <Metric
           icon={<ShieldWarning size={18} />}
           label="Escalated"
-          value="1"
-          detail="Awaiting assessment"
+          value={
+            cityRuns
+              ? String(
+                  cityRuns.filter((r) => r.reviewStatus === "escalated").length,
+                )
+              : "—"
+          }
+          detail="In recent assigned-area runs"
           tone="danger"
         />
       </div>
       <SharedForecastOutlook
         eyebrow="Assigned seven-day outlook"
-        title="Marikina forecast indicators"
+        title={`${LOCATIONS[code].name} forecast indicators`}
         description="The same forecast evidence shown to residents, with LGU review and escalation handled separately."
         snapshot={snapshot}
         error={outlook.error}
@@ -435,7 +553,10 @@ function LguHome() {
   );
 }
 
-function LguLocations() {
+function LguLocations({ codes }: { codes: LocationCode[] }) {
+  const { data: runs } = useConvexQueryResult(convexFunctions.recentRuns, {
+    limit: 10,
+  });
   return (
     <>
       <PageHeading
@@ -452,10 +573,29 @@ function LguLocations() {
             { key: "updated", label: "Updated" },
           ]}
           rows={supportedLocations
-            .filter((location) => location.name === "Marikina")
-            .map((location) => ({ ...location }))}
-          actions={() => (
-            <ActionLink href="/lgu/outlook" variant="quiet">
+            .filter((location) =>
+              codes.some((code) => LOCATIONS[code].name === location.name),
+            )
+            .map((location) => {
+              const run = runs?.find((r) =>
+                r.locations.includes(locationCodeForName(location.name)),
+              );
+              return {
+                ...location,
+                status: run?.status ?? (runs ? "No recent run" : "—"),
+                updated: run
+                  ? new Date(run.completedAt ?? run.requestedAt).toLocaleString(
+                      "en-PH",
+                      { timeZone: "Asia/Manila" },
+                    )
+                  : "—",
+              };
+            })}
+          actions={(row) => (
+            <ActionLink
+              href={`/lgu/outlook?city=${locationCodeForName(row.name)}`}
+              variant="quiet"
+            >
               Inspect
             </ActionLink>
           )}
@@ -465,19 +605,19 @@ function LguLocations() {
   );
 }
 
-function LguOutlook() {
+function LguOutlook({ code }: CityProps) {
   const [layer, setLayer] = useState<MapLayerId>("base");
   const [selectedDay, setSelectedDay] = useState(0);
-  const outlook = useOutlookFeed("marikina");
+  const outlook = useOutlookFeed(code);
 
   return (
     <>
       {convexConfigured ? (
-        <OutlookBridge locationCode="marikina" onSnapshot={outlook.adopt} />
+        <OutlookBridge locationCode={code} onSnapshot={outlook.adopt} />
       ) : null}
       <PageHeading
         title="Forecast outlook"
-        eyebrow="Marikina · assigned area"
+        eyebrow={`${LOCATIONS[code].name} · assigned area`}
         description="Review the shared seven-day forecast evidence and its assigned-area geographic context."
         actions={<ActionLink href="/lgu/reviews">Review queue</ActionLink>}
         notice={
@@ -489,7 +629,7 @@ function LguOutlook() {
       />
       <SharedForecastOutlook
         eyebrow="Assigned seven-day outlook"
-        title="Marikina forecast indicators"
+        title={`${LOCATIONS[code].name} forecast indicators`}
         description="Resident-visible evidence with LGU review responsibilities kept in the review queue."
         snapshot={outlook.snapshot}
         error={outlook.error}
@@ -498,14 +638,14 @@ function LguOutlook() {
       <Surface
         className="mt-4"
         title="Assigned-area map"
-        description="Geographic context for the same Marikina forecast"
+        description={`Geographic context for the same ${LOCATIONS[code].name} forecast`}
       >
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_320px]">
           <RiverMap
             activeLayer={layer}
             onLayerChange={setLayer}
             forecast={outlook.snapshot}
-            locationCode="marikina"
+            locationCode={code}
             selectedDay={selectedDay}
             onDayChange={setSelectedDay}
           />
@@ -516,7 +656,7 @@ function LguOutlook() {
             </p>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-major-status mt-4">Marikina</p>
+                <p className="text-major-status mt-4">{LOCATIONS[code].name}</p>
                 <p className="text-body mt-1 text-muted">
                   City-level research coverage
                 </p>
@@ -757,8 +897,8 @@ function ReviewEditor({
   );
 }
 
-function LguAlerts({ detail }: { detail?: string }) {
-  if (detail === "new") return <AlertDraft />;
+function LguAlerts({ detail, code }: { detail?: string } & CityProps) {
+  if (detail === "new") return <AlertDraft code={code} />;
   if (detail === "approval") return <AlertApproval />;
   return (
     <>
@@ -824,12 +964,12 @@ function AlertApproval() {
   );
 }
 
-function AlertDraft() {
+function AlertDraft({ code }: CityProps) {
   return (
     <>
       <PageHeading
         title="Alert draft"
-        eyebrow="Future workflow · Marikina"
+        eyebrow={`Future workflow · ${LOCATIONS[code].name}`}
         description="Prepare a controlled draft supported by reviewed evidence. Publication remains unavailable."
       />
       <Surface className="mx-auto max-w-5xl" title="Draft details">
@@ -837,7 +977,8 @@ function AlertDraft() {
           <TextField
             id="alert-area"
             label="Affected area"
-            defaultValue="Marikina (city-level)"
+            readOnly
+            value={`${LOCATIONS[code].name} (city-level)`}
           />
           <TextField
             id="alert-period"
@@ -899,14 +1040,25 @@ function AlertDraft() {
 }
 
 export function LguScreen({ segments }: { segments: string[] }) {
+  const codes = (useWorkspaceAccount().assignedLocations ?? []).filter(
+    isLocationCode,
+  );
+  const selected = useSearchParams().get("city");
+  const code = codes.find((c) => c === selected) ?? codes[0];
+  if (!code)
+    return (
+      <Notice title="No supported LGU assignment" tone="warning">
+        Ask an administrator to confirm your approved city before viewing its
+        outlook.
+      </Notice>
+    );
   const [screen, detail] = segments;
-  if (!screen) return <LguHome />;
-  if (screen === "map") return <LguOutlook />;
-  if (screen === "locations") return <LguLocations />;
-  if (screen === "outlook") return <LguOutlook />;
+  if (screen === "locations") return <LguLocations codes={codes} />;
+  if (screen === "outlook" || screen === "map")
+    return <LguOutlook key={code} code={code} />;
   if (screen === "reviews") return <ReviewQueue detail={detail} />;
-  if (screen === "alerts") return <LguAlerts detail={detail} />;
-  return <LguHome />;
+  if (screen === "alerts") return <LguAlerts detail={detail} code={code} />;
+  return <LguHome key={code} code={code} />;
 }
 
 function AdminHome() {

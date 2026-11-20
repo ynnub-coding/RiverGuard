@@ -45,7 +45,7 @@ export function can(role: ProductRole, capability: AdminCapability): boolean {
 export const roleDefinitions: Record<ProductRole, RoleDefinition> = {
   lgu: {
     label: "LGU operator",
-    location: "Marikina",
+    location: "Approved assignment",
     description:
       "Review assigned-area outlooks and record controlled assessments.",
     navigation: [
@@ -64,7 +64,7 @@ export const roleDefinitions: Record<ProductRole, RoleDefinition> = {
   },
   resident: {
     label: "Resident",
-    location: "Marikina",
+    location: "Primary city",
     description:
       "Review a simplified experimental outlook and official sources.",
     navigation: [

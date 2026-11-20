@@ -171,3 +171,65 @@ it("legacy status is not implicit approval and legacy pending requests can be mi
   await db.mutation(internal.applications.migratePending, {});
   expect(await admin.query(api.applications.queue)).toHaveLength(1);
 });
+
+it("persists primary city by identity across sessions without replacing profile fields, roles or LGU assignments", async () => {
+  const { db, member, admin, identity } = await setup();
+  const resident = await member.mutation(api.users.register, {
+    requestedRole: "resident",
+    roleProfile: { city: "Pasig", organization: "Sample association" },
+  });
+  expect((await member.query(api.users.getCurrent))?.roleProfile?.city).toBe(
+    "Pasig",
+  );
+  const lgu = identity("lgu");
+  const officer = await lgu.mutation(api.users.register, {
+    requestedRole: "lgu",
+    roleProfile: { ...profile, position: "Officer" },
+  });
+  const [req] = await admin.query(api.applications.queue);
+  await admin.mutation(api.applications.decide, {
+    id: req._id,
+    approve: true,
+    location: "marikina",
+  });
+  await member.mutation(api.users.updateCurrentProfile, {
+    roleProfile: { city: "Quezon City" },
+  });
+  expect(await identity("member").query(api.users.getCurrent)).toMatchObject({
+    _id: resident._id,
+    displayName: resident.displayName,
+    role: "resident",
+    roleProfile: { city: "Quezon City", organization: "Sample association" },
+    assignedLocations: null,
+  });
+  await expect(db.query(api.users.getCurrent)).rejects.toThrow();
+  expect(await identity("other").query(api.users.getCurrent)).toBeNull();
+  await expect(
+    member.mutation(api.users.updateCurrentProfile, {
+      userId: officer._id,
+      assignedLocations: ["pasig"],
+    } as never),
+  ).rejects.toThrow();
+  await lgu.mutation(api.users.updateCurrentProfile, {
+    roleProfile: { requestedArea: "Quezon City" },
+  });
+  expect((await lgu.query(api.users.getCurrent))?.assignedLocations).toEqual([
+    "marikina",
+  ]);
+  await db.run(async (ctx) => {
+    const row = await ctx.db.query("lguProfiles").first();
+    await ctx.db.delete(row!._id);
+  });
+  expect((await lgu.query(api.users.getCurrent))?.assignedLocations).toEqual(
+    [],
+  );
+  const events = await admin.query(api.applications.audit);
+  const approval = events.find((e) => e.action === "approved");
+  expect(approval).toMatchObject({
+    actorLabel: "Administrator",
+    recipientLabel: officer.email,
+    location: "marikina",
+    subject: officer._id,
+  });
+  await expect(member.query(api.applications.audit)).rejects.toThrow();
+});

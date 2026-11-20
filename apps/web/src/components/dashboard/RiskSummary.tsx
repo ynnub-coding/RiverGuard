@@ -11,7 +11,7 @@
 import Link from "next/link";
 
 import { StatusLabel } from "@/components/ui";
-import { DEFAULT_LOCATION, LOCATIONS } from "@/lib/locations";
+import { LOCATIONS, type LocationCode } from "@/lib/locations";
 import { useOutlookFeed, type OutlookSource } from "@/lib/outlook";
 import type { OutlookDay } from "@/types";
 
@@ -19,7 +19,7 @@ export interface RiskSummaryProps {
   selectedDay: number;
   onDayChange: (index: number) => void;
   /** City to run the feed for when no data is passed in. */
-  locationCode?: string;
+  locationCode: LocationCode;
   locationName?: string;
   /** Days from a real run. Omit to use the live feed for `locationCode`. */
   days?: OutlookDay[];
@@ -38,10 +38,13 @@ function toneForLabel(label: OutlookDay["label"]): string {
   return "text-muted";
 }
 
-export function RiskSummary({
+export function RiskSummary(props: RiskSummaryProps) {
+  return <CityRiskSummary key={props.locationCode} {...props} />;
+}
+function CityRiskSummary({
   selectedDay,
   onDayChange,
-  locationCode = DEFAULT_LOCATION,
+  locationCode,
   locationName,
   days: daysProp,
   source: sourceProp,
@@ -56,11 +59,7 @@ export function RiskSummary({
 
   const days = daysProp ?? snapshot?.days ?? [];
   const source = sourceProp ?? snapshot?.source ?? "none";
-  const resolvedName =
-    locationName ??
-    snapshot?.locationName ??
-    LOCATIONS[locationCode as keyof typeof LOCATIONS]?.name ??
-    locationCode;
+  const resolvedName = locationName ?? LOCATIONS[locationCode].name;
   const note =
     noteProp ??
     (snapshot?.degraded ? "Rain inputs are not a live forecast." : undefined);

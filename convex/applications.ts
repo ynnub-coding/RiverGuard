@@ -174,7 +174,29 @@ export const audit = query({
   args: {},
   handler: async (ctx) => {
     await requireRole(ctx, ["admin"]);
-    return ctx.db.query("accessEvents").order("desc").take(100);
+    const events = await ctx.db.query("accessEvents").order("desc").take(100);
+    // Resolve current display labels once per account. Keep original identifiers
+    // even for deleted accounts; an invitation subject is an email, not a UID.
+    const ids = new Set(
+      events.flatMap((event) => [event.actor, event.subject]),
+    );
+    const labels = new Map(
+      await Promise.all(
+        [...ids].map(async (raw) => {
+          const id = ctx.db.normalizeId("users", raw);
+          const user = id ? await ctx.db.get(id) : null;
+          return [
+            raw,
+            user?.displayName.trim() || user?.email || null,
+          ] as const;
+        }),
+      ),
+    );
+    return events.map((event) => ({
+      ...event,
+      actorLabel: labels.get(event.actor) ?? null,
+      recipientLabel: labels.get(event.subject) ?? null,
+    }));
   },
 });
 export const invite = mutation({

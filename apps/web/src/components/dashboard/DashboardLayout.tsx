@@ -10,7 +10,11 @@ import { Button } from "@/components/ui";
 import { Notice, WorkspaceHero } from "@/components/prototype/Primitives";
 import type { DatasetMeta, MapLayerId } from "@/types";
 
-import { DEFAULT_LOCATION, LOCATIONS } from "@/lib/locations";
+import {
+  DEFAULT_LOCATION,
+  LOCATIONS,
+  type LocationCode,
+} from "@/lib/locations";
 import { useOutlookFeed } from "@/lib/outlook";
 
 import { ModelContributionPanel } from "./ModelContributionPanel";
@@ -20,11 +24,16 @@ import { describeStorageShort } from "@/lib/persistence";
 import { convexConfigured, OutlookBridge } from "./OutlookBridge";
 import { RiskSummary } from "./RiskSummary";
 
-export function DashboardLayout() {
+export function DashboardLayout({
+  locationCode = DEFAULT_LOCATION,
+}: { locationCode?: LocationCode } = {}) {
+  return <DashboardForCity key={locationCode} locationCode={locationCode} />;
+}
+function DashboardForCity({ locationCode }: { locationCode: LocationCode }) {
   const [activeLayer, setActiveLayer] = useState<MapLayerId>("base");
   const [selectedDay, setSelectedDay] = useState(0);
-  const location = LOCATIONS[DEFAULT_LOCATION];
-  const outlook = useOutlookFeed(DEFAULT_LOCATION);
+  const location = LOCATIONS[locationCode];
+  const outlook = useOutlookFeed(locationCode);
   const [dataset, setDataset] = useState<DatasetMeta | null>(null);
   const [datasetError, setDatasetError] = useState<string | null>(null);
 
@@ -83,10 +92,7 @@ export function DashboardLayout() {
   return (
     <main id="dashboard" className="min-h-screen bg-canvas">
       {convexConfigured ? (
-        <OutlookBridge
-          locationCode={DEFAULT_LOCATION}
-          onSnapshot={outlook.adopt}
-        />
+        <OutlookBridge locationCode={locationCode} onSnapshot={outlook.adopt} />
       ) : null}
       <div className="min-h-screen bg-canvas">
         <div className="min-w-0 p-4 sm:p-6 lg:p-7">
@@ -180,7 +186,7 @@ export function DashboardLayout() {
               activeLayer={activeLayer}
               onLayerChange={setActiveLayer}
               forecast={outlook.snapshot}
-              locationCode={DEFAULT_LOCATION}
+              locationCode={locationCode}
               selectedDay={selectedDay}
               onDayChange={setSelectedDay}
               className="min-[1180px]:sticky min-[1180px]:top-[5.5rem] z-0 min-[1180px]:col-span-8"
@@ -188,7 +194,8 @@ export function DashboardLayout() {
             />
             <div className="grid content-start gap-3 min-[1180px]:col-span-4">
               <RiskSummary
-                locationName={snapshot?.locationName ?? location.name}
+                locationCode={locationCode}
+                locationName={location.name}
                 selectedDay={selectedDay}
                 onDayChange={setSelectedDay}
                 days={snapshot?.days ?? []}
@@ -202,7 +209,7 @@ export function DashboardLayout() {
                 location={location.name}
                 limit={14}
               />
-              <ModelContributionPanel locationCode={DEFAULT_LOCATION} />
+              <ModelContributionPanel locationCode={locationCode} />
               {dataset ? (
                 <StationDetails
                   dataset={dataset}

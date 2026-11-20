@@ -21,6 +21,15 @@ export async function assignedLocationCodes(
   )
     return null;
 
+  return approvedLguLocations(ctx, user);
+}
+
+// The assignment shown in an LGU workspace is independent of other role grants.
+export async function approvedLguLocations(
+  ctx: QueryCtx,
+  user: AuthenticatedUser,
+) {
+  if (!hasRole(user, "lgu")) return null;
   const profile = await ctx.db
     .query("lguProfiles")
     .withIndex("by_user", (index) => index.eq("userId", user._id))

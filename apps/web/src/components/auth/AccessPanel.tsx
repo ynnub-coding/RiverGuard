@@ -9,6 +9,8 @@ import {
 } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
+import { roleDefinitions } from "@/data/prototype";
+import { LOCATIONS } from "@/lib/locations";
 import { convexConfigured } from "@/lib/convex-config";
 import { useFirebaseAuth } from "./FirebaseAuthProvider";
 import { Button } from "@/components/ui";
@@ -17,6 +19,7 @@ import {
   TextAreaField,
   TextField,
   Surface,
+  StatusBadge,
 } from "../prototype/Primitives";
 
 type View = "request" | "status" | "inbox" | "queue" | "invite" | "audit";
@@ -333,20 +336,89 @@ function Inbox() {
     </Surface>
   );
 }
+const eventDate = new Intl.DateTimeFormat("en-PH", {
+  dateStyle: "long",
+  timeStyle: "short",
+  timeZone: "Asia/Manila",
+});
+function AuditIdentity({ label, id }: { label: string | null; id: string }) {
+  if (!id) return <>Unavailable</>;
+  if (id.includes("@")) return <span className="break-all">{id}</span>;
+  return (
+    <details className="min-w-0">
+      <summary className="cursor-pointer break-words">
+        {label || (id.length > 14 ? `${id.slice(0, 7)}…${id.slice(-5)}` : id)}
+      </summary>
+      <code className="break-all text-metadata">{id}</code>
+    </details>
+  );
+}
 function Audit() {
   const events = useQuery(api.applications.audit, {});
   return (
     <Surface title="Recent access changes">
-      {!events
-        ? "Loading events…"
-        : !events.length
-          ? "No recorded events."
-          : events.map((e) => (
-              <p className="py-2" key={e._id}>
-                {new Date(e._creationTime).toLocaleString()} · {e.action} ·{" "}
-                {e.role} {e.location} · actor {e.actor} · recipient {e.subject}
-              </p>
-            ))}
+      {!events ? (
+        "Loading events…"
+      ) : !events.length ? (
+        "No recorded events."
+      ) : (
+        <ol className="divide-y divide-line">
+          {events.map((e) => {
+            // Only registrations encode account status. A rejected upgrade, for
+            // example, does not imply the recipient has a rejected account.
+            const status =
+              e.action === "registered active"
+                ? "Active"
+                : e.action === "registered pending"
+                  ? "Pending"
+                  : null;
+            const action = status
+              ? "Registered"
+              : e.action.charAt(0).toUpperCase() + e.action.slice(1);
+            return (
+              <li key={e._id} className="grid min-w-0 gap-2 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-button">
+                    {action} · {roleDefinitions[e.role].label}
+                  </span>
+                  {status && (
+                    <StatusBadge
+                      tone={status === "Active" ? "success" : "warning"}
+                    >
+                      {status}
+                    </StatusBadge>
+                  )}
+                </div>
+                {e.location && (
+                  <p className="text-body">
+                    Location: {LOCATIONS[e.location].name}
+                  </p>
+                )}
+                <time
+                  className="text-metadata text-muted"
+                  dateTime={new Date(e._creationTime).toISOString()}
+                >
+                  {eventDate.format(e._creationTime)} (Manila)
+                </time>
+                <dl className="grid gap-2 text-body sm:grid-cols-2">
+                  <div className="min-w-0">
+                    <dt className="text-metadata text-muted">Actor</dt>
+                    <dd>
+                      <AuditIdentity label={e.actorLabel} id={e.actor} />
+                    </dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-metadata text-muted">Recipient</dt>
+                    <dd>
+                      <AuditIdentity label={e.recipientLabel} id={e.subject} />
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            );
+          })}
+        </ol>
+      )}
     </Surface>
   );
 }

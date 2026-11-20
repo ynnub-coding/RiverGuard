@@ -112,6 +112,7 @@ it.each(["email", "Google"])(
       fill("signup-organization", "University");
       fill("signup-purpose", "Forecast evaluation");
     } else {
+      fill("signup-city", "Pasig");
       fill("signup-email", credential.email);
       fill("signup-password", "Password123!");
       fill("signup-confirm", "Password123!");
@@ -128,6 +129,8 @@ it.each(["email", "Google"])(
         role === "resident" ? "/auth/verify" : "/auth/pending",
       ),
     );
+    if (role === "resident")
+      expect(m.mutation.mock.calls[0][1].roleProfile.city).toBe("Pasig");
     expect(m.mutation.mock.calls[0][1].requestedRole).toBe(role);
     expect(provider === "Google" ? m.google : m.create).toHaveBeenCalledTimes(
       1,

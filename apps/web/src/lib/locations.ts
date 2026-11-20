@@ -103,11 +103,20 @@ export function getLocation(value: string): LocationConfig | null {
  * Wizard links carry a human-readable name, so this keeps the mapping in one
  * place instead of duplicating a lookup in every screen.
  */
-export function locationCodeForName(value: string): LocationCode {
+export function locationCodeForName(value: string): LocationCode;
+// Profile and permission data must not silently fall back to another city.
+export function locationCodeForName(
+  value: string,
+  fallback: null,
+): LocationCode | null;
+export function locationCodeForName(
+  value: string,
+  fallback: LocationCode | null = DEFAULT_LOCATION,
+): LocationCode | null {
   const slug = value.trim().toLowerCase().replace(/\s+/g, "-");
   if (isLocationCode(slug)) return slug;
   const match = LOCATION_CODES.find(
     (code) => LOCATIONS[code].name.toLowerCase() === value.trim().toLowerCase(),
   );
-  return match ?? DEFAULT_LOCATION;
+  return match ?? fallback;
 }
