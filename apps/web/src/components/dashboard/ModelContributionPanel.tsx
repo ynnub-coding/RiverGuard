@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { StatusLabel } from "@/components/ui";
 import type { ModelContribution } from "@/types";
+import { formatProbability, formatProbabilityDelta } from "@/lib/probability";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -180,7 +181,7 @@ export function ModelContributionPanel({
                   <span className="text-metadata text-ink">{row.label}</span>
                   <span className="text-metadata font-semibold text-ink">
                     {signed}
-                    {(row.deltaProbability * 100).toFixed(1)} pp
+                    {formatProbabilityDelta(row.deltaProbability)}
                   </span>
                 </div>
                 <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-canvas">
@@ -207,7 +208,7 @@ export function ModelContributionPanel({
 
       {shownState === "ready" && header ? (
         <p className="text-metadata mt-2 text-muted">
-          Base probability {(header.baseProbability * 100).toFixed(1)}% · a
+          Base probability {formatProbability(header.baseProbability)} · a
           sensitivity sweep, not a causal attribution.
         </p>
       ) : null}

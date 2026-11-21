@@ -15,6 +15,7 @@ import { gisLayerIdFromKey, gisLayerKey } from "@/lib/gis-types";
 import { useGisLayers } from "@/lib/use-gis-layers";
 import { LOCATION_CODES, LOCATIONS, type LocationCode } from "@/lib/locations";
 import type { OutlookSnapshot } from "@/lib/outlook";
+import { formatProbability } from "@/lib/probability";
 import type { MapLayerId } from "@/types";
 
 export interface RiverMapProps {
@@ -394,7 +395,7 @@ export function RiverMap({
               : label === "Moderate"
                 ? "#a36726"
                 : "#147384";
-          element.textContent = `${location.name} · ${(probability * 100).toFixed(0)}%`;
+          element.textContent = `${location.name} · ${formatProbability(probability)}`;
         } else if (selected) {
           element.style.background = "#64748b";
           element.textContent = `${location.name} · No data`;
@@ -438,13 +439,19 @@ export function RiverMap({
   const activeDay = forecast?.days[activeIndex] ?? null;
   const selectedLocation = locationCode ? LOCATIONS[locationCode] : null;
 
+  // Three different things live under the word "overlay"; keep them distinct:
+  //   1. city-level ML predictions — numbers per city, no geometry anywhere;
+  //   2. verified static hazard/boundary layers — real files, drawn only after
+  //      npm run gis:verify accepts them (none loaded today);
+  //   3. experimental geographic overlays — not offered: the model has no
+  //      street-level output.
   const layerSummary = activeGisLayer
     ? `${activeGisLayer.description || `${activeGisLayer.title} from a verified local file.`} Source: ${activeGisLayer.source.publisher}, ${activeGisLayer.source.license}, retrieved ${activeGisLayer.source.retrievedAt}.`
     : activeLayer === "base" || activeGisId !== null
       ? `${BASEMAP.label}: roads, rivers, land, and place labels.`
       : activeLayer === "static"
-        ? "Static hazard susceptibility needs a verified hazard layer in data/gis. None is loaded, so nothing is drawn."
-        : "The model works at city level, so it produces numbers per city, not geometry. There is no map overlay to draw from it.";
+        ? "Static hazard susceptibility needs a verified hazard layer in data/gis. None is loaded, and RiverGuard will not draw unverified hazard data. See docs/gis-overlay-implementation-plan.md."
+        : "City-level model predictions are values per city, not per barangay or street — they are shown on the city chips and never drawn as geometry. Verified hazard layers, when added, are separate and labelled as static susceptibility.";
 
   // The map fills whatever height it is given, so a tall sibling column used to
   // stretch it into a 1000px+ panel. The height is bounded instead, and the
@@ -574,9 +581,7 @@ export function RiverMap({
                     <div>
                       <p className="text-metadata text-muted">Probability</p>
                       <p className="text-button mt-0.5">
-                        {activeDay.probability === undefined
-                          ? "—"
-                          : `${(activeDay.probability * 100).toFixed(1)}%`}
+                        {formatProbability(activeDay.probability)}
                       </p>
                     </div>
                     <div>

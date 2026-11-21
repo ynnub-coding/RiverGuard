@@ -11,6 +11,7 @@
 
 import type { RecentRun, RemoteRun } from "./convex-functions";
 import { LOCATIONS, type LocationCode } from "./locations";
+import { formatProbability as formatProbabilityShared } from "./probability";
 
 export type RunRiskLevel = "lower" | "moderate" | "elevated" | "unavailable";
 export type RunAlertLevel = "none" | "first" | "second" | "third";
@@ -42,6 +43,10 @@ export interface StoredRunSummary {
   days: number;
   alerts: number;
   modelVersion: string | null;
+  /** Machine-readable failure stage when status is "failed" (e.g. "ml_service"). */
+  errorCode?: string | null;
+  /** Short, sanitised reason — never a stack trace, token or URL. */
+  failureReason?: string | null;
 }
 
 /** What the run detail page needs. */
@@ -76,7 +81,7 @@ export function formatRunTime(ms: number | null): string {
 }
 
 export function formatProbability(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
+  return formatProbabilityShared(value);
 }
 
 export function formatMetres(value: number): string {
@@ -104,6 +109,8 @@ export function summaryFromConvexRun(run: RecentRun): StoredRunSummary {
     days: run.days,
     alerts: run.alerts,
     modelVersion: run.modelVersion,
+    errorCode: run.errorCode ?? null,
+    failureReason: run.failureReason ?? null,
   };
 }
 
@@ -122,6 +129,8 @@ export function detailFromConvexRun(run: RemoteRun): StoredRun {
     days: run.days.length,
     alerts: run.days.filter((day) => day.riskLevel === "elevated").length,
     modelVersion: run.modelVersion,
+    errorCode: null,
+    failureReason: null,
     issueDate: run.issueDate ?? "—",
     retrievedAt: run.retrievedAt,
     featureSchemaVersion: run.featureSchemaVersion ?? "—",
@@ -155,6 +164,8 @@ export function summaryFromStoredRun(run: StoredRun): StoredRunSummary {
     days: run.days,
     alerts: run.alerts,
     modelVersion: run.modelVersion,
+    errorCode: run.errorCode ?? null,
+    failureReason: run.failureReason ?? null,
   };
   return summary;
 }

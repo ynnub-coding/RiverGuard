@@ -121,6 +121,60 @@ function enqueue<T>(work: () => Promise<T>): Promise<T> {
   return next;
 }
 
+export interface NewLocalFailure {
+  locationCode: string;
+  locationName: string;
+  provider?: string;
+  providerDegraded?: boolean;
+  retrievedAt?: number;
+  /** Machine stage the failure happened at. */
+  failureStage: "weather_provider" | "ml_service" | "persistence" | "unknown";
+  /** Sanitised, reader-facing reason (never a stack trace or URL). */
+  failureReason: string;
+}
+
+/**
+ * Record a failed forecast attempt.
+ *
+ * A failure is not a forecast: no days are written, so the history surface can
+ * say "attempted, for <city>, failed at <stage>" instead of showing an empty
+ * success or nothing at all. Failures are capped by the same MAX_RUNS window
+ * as successful runs and remain distinguishable via `status: "failed"`.
+ */
+export async function recordLocalFailure(
+  input: NewLocalFailure,
+): Promise<StoredRun> {
+  const now = Date.now();
+  const record: Omit<StoredRun, "source"> = {
+    runId: `local-${now.toString(36)}-${randomUUID().slice(0, 8)}`,
+    requestedAt: now,
+    completedAt: now,
+    provider: input.provider ?? "unknown",
+    providerDegraded: input.providerDegraded ?? true,
+    status: "failed",
+    errorCode: input.failureStage,
+    failureReason: input.failureReason,
+    locations: [input.locationName],
+    days: 0,
+    alerts: 0,
+    modelVersion: null,
+    issueDate: new Date(now).toISOString().slice(0, 10),
+    retrievedAt: input.retrievedAt ?? now,
+    featureSchemaVersion: "unavailable",
+    operatingThreshold: 0,
+    warning: "",
+    modelKind: null,
+    dayRows: [],
+  };
+
+  return await enqueue(async () => {
+    const store = await readStore();
+    const runs = [record, ...store.runs].slice(0, MAX_RUNS);
+    await writeStore({ version: STORE_VERSION, runs });
+    return { ...record, source: "local" as const };
+  });
+}
+
 /** Newest first. */
 export async function listLocalRuns(limit = 25): Promise<StoredRun[]> {
   const store = await readStore();

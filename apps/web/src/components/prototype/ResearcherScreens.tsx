@@ -44,6 +44,7 @@ import {
   type StoredRun,
   type StoredRunSummary,
 } from "@/lib/runs";
+import { formatProbabilityDelta } from "@/lib/probability";
 import { useLocalRun, useLocalRuns } from "@/lib/use-runs";
 import { useDatasetMeta } from "@/lib/use-dataset-meta";
 import { useModelArtifacts } from "@/lib/use-model-artifacts";
@@ -694,6 +695,17 @@ function ForecastProgress() {
                 {feed.errorDetail}
               </p>
             ) : null}
+            {feed.failureTracked === "tracked" ? (
+              <p className="text-metadata mt-2 text-muted">
+                This attempt was logged as a failed run (visible in run history;
+                not model output).
+              </p>
+            ) : feed.failureTracked === "untracked" ? (
+              <p className="text-metadata mt-2 text-warning">
+                This attempt could not be logged as a failed run — it will not
+                appear in history.
+              </p>
+            ) : null}
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button size="small" onClick={() => void run()}>
                 <ArrowClockwise size={14} /> Try again
@@ -1006,6 +1018,7 @@ function RunUnreadable({ runId, reason }: { runId: string; reason: string }) {
 }
 
 function RunDetailView({ run }: { run: StoredRun }) {
+  const failed = run.status === "failed";
   const dayRows: Array<Record<string, string>> = run.dayRows.map((day) => ({
     date: day.date,
     horizon: `+${day.horizonDays}d`,
@@ -1029,6 +1042,17 @@ function RunDetailView({ run }: { run: StoredRun }) {
           </ActionLink>
         }
       />
+
+      {failed ? (
+        <Notice className="mt-3" title="This run failed" tone="danger">
+          {run.errorCode
+            ? `Failed at the ${run.errorCode.replace(/_/g, " ")} stage. `
+            : ""}
+          {run.failureReason ?? "No further detail was recorded."} This is not a
+          forecast — no predictions were produced or stored, and nothing here
+          may be read as model output.
+        </Notice>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metric
@@ -1096,7 +1120,9 @@ function RunDetailView({ run }: { run: StoredRun }) {
       >
         {dayRows.length === 0 ? (
           <p className="text-body text-muted">
-            This run stored no forecast days.
+            {failed
+              ? "This run failed before it produced any days."
+              : "This run stored no forecast days."}
           </p>
         ) : (
           <DataTable
@@ -1253,7 +1279,7 @@ function CompareTable({ runA, runB }: { runA: StoredRun; runB: StoredRun }) {
     .map(([date, pair]) => {
       const dProbability =
         pair.a && pair.b
-          ? `${((pair.b.probability - pair.a.probability) * 100).toFixed(1)} pp`
+          ? formatProbabilityDelta(pair.b.probability - pair.a.probability)
           : "—";
       const dLevel =
         pair.a && pair.b

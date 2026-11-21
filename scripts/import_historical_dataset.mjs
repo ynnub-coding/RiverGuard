@@ -242,10 +242,10 @@ if (!convexUrl) {
 }
 
 /**
- * The ingest mutations now refuse anonymous writes (`convex/ingest.ts`), so an
+ * The ingest mutations refuse anonymous writes (`convex/ingest.ts`), so an
  * import has to prove it is allowed: either this secret, or a signed-in
  * administrator. Fail here, with the reason, rather than 200 times inside the
- * deployment.
+ * deployment. --validate-only never reaches this point.
  */
 const ingestSecret = process.env.RIVERGUARD_INGEST_SECRET;
 if (!ingestSecret) {

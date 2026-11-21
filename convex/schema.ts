@@ -169,6 +169,17 @@ export default defineSchema({
       v.literal("failed"),
     ),
     errorCode: v.optional(v.string()),
+    /**
+     * The city a failed run was attempting. Completed runs derive their
+     * locations from the forecasts rows; failed runs have none, so without
+     * this the history screen could not say what was attempted.
+     */
+    locationCode: v.optional(v.string()),
+    /**
+     * Short, sanitised, reader-facing explanation of the failure (e.g. which
+     * stage failed and why). Never a stack trace, URL, or credential.
+     */
+    failureReason: v.optional(v.string()),
   }).index("by_requested_at", ["requestedAt"]),
 
   forecasts: defineTable({

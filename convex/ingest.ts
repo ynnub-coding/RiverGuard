@@ -5,9 +5,10 @@
  * `historical:upsertFloodEvents` write the rows the charts, the risk badges and
  * the model inputs are built from. They are called in two ways:
  *
- *   1. by this repository's own server code — `/api/historical` and
- *      `scripts/import_historical_dataset.mjs`, which hold no Firebase
- *      identity and therefore cannot use the normal user check;
+ *   1. by this repository's own server code — `/api/forecast`,
+ *      `/api/historical` and `scripts/import_historical_dataset.mjs`, which
+ *      hold no Firebase identity and therefore cannot use the normal
+ *      user check;
  *   2. by a signed-in person importing a dataset by hand.
  *
  * Both are allowed, but only with proof. The deployment's
@@ -17,11 +18,12 @@
  * The check fails closed on purpose: when `RIVERGUARD_INGEST_SECRET` is not set
  * on the deployment, a request that carries no user identity is rejected rather
  * than trusted. Set the variable on the deployment and in the web app's server
- * environment to keep the live history path writing.
+ * environment (never `NEXT_PUBLIC_*`) to keep the live write path working.
  */
 
-import { requireRole } from "./auth";
 import type { MutationCtx } from "./_generated/server";
+
+import { requireRole } from "./auth";
 
 /**
  * Convex exposes the deployment's environment variables on `process.env`, but
@@ -47,7 +49,7 @@ function sameSecret(candidate: string, expected: string): boolean {
  * The same variable authorises the historical ingest and the server-side
  * forecast write: one credential to configure, one place to rotate it.
  */
-export function hasIngestSecret(secret?: string): boolean {
+export function hasIngestSecret(secret?: string | null): boolean {
   const expected = process.env.RIVERGUARD_INGEST_SECRET;
   return (
     typeof expected === "string" &&
@@ -57,9 +59,14 @@ export function hasIngestSecret(secret?: string): boolean {
   );
 }
 
+/**
+ * Authorise a global ingest call: either the deployment's server credential,
+ * or a signed-in administrator. Historical imports are deployment-wide, so an
+ * LGU assignment is the wrong boundary here — secret or admin, nothing else.
+ */
 export async function assertIngestAuthorized(
   ctx: MutationCtx,
-  secret?: string,
+  secret?: string | null,
 ): Promise<void> {
   if (hasIngestSecret(secret)) {
     return;

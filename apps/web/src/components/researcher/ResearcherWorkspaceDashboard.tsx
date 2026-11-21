@@ -31,6 +31,7 @@ import {
   type LocationCode,
 } from "@/lib/locations";
 import { describeStorageShort } from "@/lib/persistence";
+import { formatProbability } from "@/lib/probability";
 import { useModelArtifacts } from "@/lib/use-model-artifacts";
 import { useOutlookFeed } from "@/lib/outlook";
 import type { MapLayerId, OutlookDay } from "@/types";
@@ -95,14 +96,20 @@ export function ResearcherWorkspaceDashboard() {
       ),
     [days],
   );
-  const totalRain = days.reduce(
-    (total, day) => total + (day.rainfallMm ?? 0),
-    0,
-  );
-  const maxWaterLevel = days.reduce(
-    (maximum, day) => Math.max(maximum, day.waterLevelM ?? 0),
-    0,
-  );
+  // Missing values are not zeros: when every day lacks a number the metric
+  // reports nothing rather than a confident 0.
+  const rainfalls = days
+    .map((day) => day.rainfallMm)
+    .filter((value): value is number => value != null);
+  const waterLevels = days
+    .map((day) => day.waterLevelM)
+    .filter((value): value is number => value != null);
+  const totalRain =
+    rainfalls.length > 0
+      ? rainfalls.reduce((total, value) => total + value, 0)
+      : null;
+  const maxWaterLevel =
+    waterLevels.length > 0 ? Math.max(...waterLevels) : null;
   const threshold =
     outlook.snapshot?.operatingThreshold ??
     artifacts.model?.operatingThreshold ??
@@ -263,13 +270,15 @@ export function ResearcherWorkspaceDashboard() {
                     <div>
                       <p className="text-xs text-[#657d90]">Probability</p>
                       <p className="mt-1 text-4xl font-semibold tracking-[-0.055em] tabular-nums">
-                        {((activeDay.probability ?? 0) * 100).toFixed(0)}%
+                        {formatProbability(activeDay.probability)}
                       </p>
                     </div>
                     <div className="border-l border-[#d7e2e9] pl-4">
                       <p className="text-xs text-[#657d90]">Predicted level</p>
                       <p className="mt-1 text-4xl font-semibold tracking-[-0.055em] tabular-nums">
-                        {(activeDay.waterLevelM ?? 0).toFixed(2)}
+                        {activeDay.waterLevelM != null
+                          ? activeDay.waterLevelM.toFixed(2)
+                          : "—"}
                         <span className="ml-1 text-base">m</span>
                       </p>
                     </div>
@@ -292,11 +301,53 @@ export function ResearcherWorkspaceDashboard() {
                       />
                     </div>
                   </div>
-                  <p className="mt-5 text-xs leading-5 text-[#53697d]">
-                    {(activeDay.rainfallMm ?? 0).toFixed(1)} mm forecast rain ·
-                    water level is a model-predicted proxy, not a direct gauge
-                    observation.
-                  </p>
+                  <div className="mt-5 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#657d90]">
+                      Why this prediction
+                    </p>
+                    <ul className="space-y-1 text-xs leading-5 text-[#53697d]">
+                      {(activeDay.reasons?.length
+                        ? activeDay.reasons
+                        : ["No reason lines were stored for this day."]
+                      ).map((reason) => (
+                        <li key={reason}>· {reason}</li>
+                      ))}
+                    </ul>
+                    <p className="text-xs leading-5 text-[#53697d]">
+                      {activeDay.rainfallMm != null
+                        ? `${activeDay.rainfallMm.toFixed(1)} mm forecast rain`
+                        : "Forecast rain unavailable"}{" "}
+                      · antecedent 7-day{" "}
+                      {inputs?.antecedentRain7dMm != null
+                        ? `${inputs.antecedentRain7dMm.toFixed(1)} mm`
+                        : "—"}{" "}
+                      · soil{" "}
+                      {inputs?.soilMoisturePercent != null
+                        ? `${inputs.soilMoisturePercent.toFixed(0)}%`
+                        : "—"}{" "}
+                      — these drive the water-level estimate, not today&rsquo;s
+                      rain alone.
+                    </p>
+                    <p className="text-xs leading-5 text-[#53697d]">
+                      {activeDay.waterLevelM != null
+                        ? `Predicted level ${activeDay.waterLevelM.toFixed(2)} m is ${
+                            activeDay.waterLevelM - location.alarmLevelsM[0] >=
+                            0
+                              ? `${(activeDay.waterLevelM - location.alarmLevelsM[0]).toFixed(2)} m above`
+                              : `${(location.alarmLevelsM[0] - activeDay.waterLevelM).toFixed(2)} m below`
+                          } the first alarm (${location.alarmLevelsM[0].toFixed(1)} m, ${
+                            location.alarmsVerified
+                              ? "verified"
+                              : "representative"
+                          }).`
+                        : "No water-level estimate stored for this day."}{" "}
+                      Operating threshold {(threshold * 100).toFixed(1)}%.
+                    </p>
+                    <p className="rounded-xl bg-[#eef4f8] p-2.5 text-xs leading-5 text-[#0b4564]">
+                      Water level is a model-predicted proxy, not an actual
+                      river gauge reading.
+                    </p>
+                  </div>
                 </>
               ) : (
                 <div className="mt-8 flex min-h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-[#cbdce5] bg-white/45 px-5 text-center">
@@ -321,11 +372,7 @@ export function ResearcherWorkspaceDashboard() {
           <Metric
             icon={<ShieldWarning size={20} />}
             label="Peak probability"
-            value={
-              peakDay
-                ? `${((peakDay.probability ?? 0) * 100).toFixed(1)}%`
-                : "—"
-            }
+            value={peakDay ? formatProbability(peakDay.probability) : "—"}
             detail={
               peakDay ? `${peakDay.isoDate} · ${peakDay.label}` : "No run"
             }
@@ -333,13 +380,15 @@ export function ResearcherWorkspaceDashboard() {
           <Metric
             icon={<Waves size={20} />}
             label="Highest predicted level"
-            value={days.length ? `${maxWaterLevel.toFixed(2)} m` : "—"}
+            value={
+              maxWaterLevel != null ? `${maxWaterLevel.toFixed(2)} m` : "—"
+            }
             detail="Model-predicted proxy"
           />
           <Metric
             icon={<CloudRain size={20} />}
             label="Seven-day rainfall"
-            value={days.length ? `${totalRain.toFixed(1)} mm` : "—"}
+            value={totalRain != null ? `${totalRain.toFixed(1)} mm` : "—"}
             detail={outlook.snapshot?.provider ?? "Weather source pending"}
           />
           <Metric
@@ -424,6 +473,33 @@ export function ResearcherWorkspaceDashboard() {
             </div>
             {inputs ? (
               <dl className="mt-4">
+                <InputRow
+                  label="Weather provider"
+                  value={
+                    outlook.snapshot?.provider
+                      ? outlook.snapshot.provider === "fixture"
+                        ? "fixture — illustrative, not a forecast"
+                        : outlook.snapshot.provider
+                      : "Unknown"
+                  }
+                />
+                <InputRow
+                  label="Inputs read as of"
+                  value={outlook.snapshot?.observed?.asOfDate ?? "Unknown"}
+                />
+                <InputRow
+                  label="Input source"
+                  value={outlook.snapshot?.observed?.rainSource ?? "Unknown"}
+                />
+                <InputRow
+                  label="Input quality"
+                  value={
+                    outlook.snapshot?.degraded
+                      ? "Degraded — not a live forecast"
+                      : (outlook.snapshot?.observed?.qualityStatus ??
+                        "provisional")
+                  }
+                />
                 <InputRow
                   label="Rain today"
                   value={`${inputs.rainfallTodayMm.toFixed(1)} mm`}

@@ -18,10 +18,12 @@ import {
   convexErrorHint,
   convexFunctions,
   convexUrl,
+  type RecordFailureArgs,
+  type RecordFailureStage,
   type RecordOutlookArgs,
 } from "./convex-functions";
 import type { MlForecastResponse } from "./ml-client";
-import { saveLocalRun } from "./run-store";
+import { recordLocalFailure, saveLocalRun } from "./run-store";
 import type { WeatherBundle } from "./weather";
 
 export interface PersistenceResult {
@@ -43,7 +45,6 @@ export async function persistOutlook(
   forecast: MlForecastResponse,
   issueDate: string,
   accessToken?: string | null,
-  serverSecret?: string | null,
 ): Promise<PersistenceResult> {
   if (!convexUrl) {
     // No deployment: keep the run on this machine so history, detail and
@@ -93,6 +94,14 @@ export async function persistOutlook(
       };
     }
   }
+
+  // This server has no Convex identity of its own. When the caller had a
+  // Firebase identity it wins (server-side verification decides their role and
+  // jurisdiction); otherwise this project's server credential is presented,
+  // never a client-supplied value.
+  const serverSecret = accessToken
+    ? null
+    : (process.env.RIVERGUARD_INGEST_SECRET ?? null);
 
   const args: RecordOutlookArgs = {
     locationCode: forecast.locationCode,
@@ -144,4 +153,98 @@ export async function persistOutlook(
           : "unknown Convex error",
     };
   }
+}
+
+export interface FailurePersistenceResult {
+  tracked: boolean;
+  kind: "convex" | "local" | "none";
+  error?: string;
+}
+
+/**
+ * Best-effort record of a failed forecast attempt.
+ *
+ * Never throws: a failure to log a failure must not mask the original error
+ * the caller is handling. The route surfaces `tracked: false` in its own
+ * response so the UI can say the failure was not logged.
+ */
+export async function persistFailure(input: {
+  locationCode: string;
+  locationName?: string;
+  provider?: string;
+  providerDegraded?: boolean;
+  retrievedAt?: number;
+  failureStage: RecordFailureStage;
+  reason: string;
+  accessToken?: string | null;
+}): Promise<FailurePersistenceResult> {
+  const failureReason = sanitiseReasonForStorage(input.reason);
+
+  const serverSecret = input.accessToken
+    ? null
+    : (process.env.RIVERGUARD_INGEST_SECRET ?? null);
+
+  const args: RecordFailureArgs = {
+    locationCode: input.locationCode,
+    locationName: input.locationName,
+    provider: input.provider,
+    providerDegraded: input.providerDegraded,
+    retrievedAt: input.retrievedAt,
+    failureStage: input.failureStage,
+    failureReason,
+    ...(serverSecret ? { serverSecret } : {}),
+  };
+
+  if (!convexUrl) {
+    try {
+      await recordLocalFailure({
+        locationCode: input.locationCode,
+        locationName: input.locationName ?? input.locationCode,
+        provider: input.provider,
+        providerDegraded: input.providerDegraded,
+        retrievedAt: input.retrievedAt,
+        failureStage: input.failureStage,
+        failureReason,
+      });
+      return { tracked: true, kind: "local" };
+    } catch (error) {
+      return {
+        tracked: false,
+        kind: "none",
+        error:
+          error instanceof Error
+            ? `local failure store: ${error.message}`
+            : "local failure store failed",
+      };
+    }
+  }
+
+  try {
+    const client = new ConvexHttpClient(convexUrl);
+    if (input.accessToken) {
+      client.setAuth(input.accessToken);
+    }
+    await client.mutation(convexFunctions.recordFailure, args);
+    return { tracked: true, kind: "convex" };
+  } catch (error) {
+    return {
+      tracked: false,
+      kind: "convex",
+      error:
+        error instanceof Error
+          ? convexErrorHint(error)
+          : "unknown Convex error",
+    };
+  }
+}
+
+/** Mirror of the server-side sanitiser: keep storage reader-facing. */
+function sanitiseReasonForStorage(reason: string): string {
+  let text = String(reason ?? "").slice(0, 300);
+  text = text.replace(/https?:\/\/\S+/gi, "[url]");
+  text = text.replace(
+    /(bearer|token|secret|key)\s*[:=]\s*\S+/gi,
+    "$1=[redacted]",
+  );
+  return text.trim() || "Unknown failure.";
 }

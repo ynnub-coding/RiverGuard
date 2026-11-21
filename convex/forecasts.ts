@@ -19,6 +19,7 @@ import { v } from "convex/values";
 
 import { raiseAlertIfElevated, resolveSupersededAlerts } from "./alerts";
 import { requireCurrentUser, requireRole } from "./auth";
+import { assertSupportedCityCode } from "./cityCodes";
 import { hasIngestSecret } from "./ingest";
 import {
   assertLocationAccess,
@@ -111,11 +112,11 @@ export const recordOutlook = mutation({
     alerts: v.number(),
   }),
   handler: async (ctx, args) => {
-    // This project's own Next server runs the forecast and has no Convex
-    // identity, so it presents the deployment credential instead.
+    // This project's own Next server runs the forecast and holds no Convex
+    // identity, so it presents the deployment credential instead. Residents
+    // record their own runs — they are the ones pressing the button; LGU
+    // accounts stay scoped to their jurisdiction by assertLocationAccess.
     const fromServer = hasIngestSecret(args.serverSecret);
-
-    // Residents record their own runs: they are the ones pressing the button.
     const user = fromServer
       ? null
       : await requireRole(ctx, ["admin", "lgu", "researcher", "resident"]);
@@ -142,6 +143,7 @@ export const recordOutlook = mutation({
       provider: args.provider,
       retrievedAt: args.retrievedAt,
       status: "completed",
+      locationCode: args.locationCode,
     });
 
     const qualityStatus = args.providerDegraded ? "unverified" : "provisional";
@@ -366,6 +368,8 @@ export const recentRuns = query({
         v.literal("returned"),
       ),
       reviewerName: v.union(v.string(), v.null()),
+      errorCode: v.optional(v.union(v.string(), v.null())),
+      failureReason: v.optional(v.union(v.string(), v.null())),
     }),
   ),
   handler: async (ctx, args) => {
@@ -407,6 +411,12 @@ export const recentRuns = query({
         const locations = [
           ...new Set(forecasts.map((row: any) => String(row.locationCode))),
         ];
+        if (locations.length === 0 && run.locationCode) {
+          // Failed runs carry no forecasts rows; the run itself knows what it
+          // was attempting, so history can say "Marikina — failed" instead of
+          // an anonymous blank row.
+          locations.push(String(run.locationCode));
+        }
         if (
           allowedLocations !== null &&
           !locations.some((location) =>
@@ -439,6 +449,8 @@ export const recentRuns = query({
             : null,
           reviewStatus: review?.status ?? "pending",
           reviewerName: reviewer?.displayName ?? null,
+          errorCode: run.errorCode ?? null,
+          failureReason: run.failureReason ?? null,
         };
       }),
     );
@@ -478,6 +490,14 @@ export const getRun = query({
       await assertLocationAccess(ctx, user, forecast.locationCode, [
         "researcher",
       ]);
+    }
+    if (forecasts.length === 0) {
+      // A failed run stores no forecast rows, so the loop above never runs —
+      // hold the same jurisdiction boundary against the run's own code.
+      const failedLocation = (run as any).locationCode;
+      if (failedLocation) {
+        await assertLocationAccess(ctx, user, String(failedLocation));
+      }
     }
 
     const modelVersionId = forecasts.find(
@@ -553,6 +573,9 @@ export const getRun = query({
       warning: Array.isArray((model as any)?.limitations)
         ? String((model as any).limitations[0] ?? "")
         : null,
+      errorCode: run.errorCode ?? null,
+      failureReason: run.failureReason ?? null,
+      locationCode: run.locationCode ?? null,
       days,
     };
   },
@@ -582,3 +605,80 @@ export const failStaleRuns = internalMutation({
     return stale.length;
   },
 });
+
+/**
+ * Record a failed forecast attempt.
+ *
+ * A failure is not a forecast: no days, no assessments, no alerts are written.
+ * The row exists so the history surface can say "a run was attempted at
+ * <time>, for <city>, and it failed at <stage>" instead of showing nothing.
+ * Retries create separate rows, each newest-first; consumers deduplicate by
+ * requestedAt when displaying consecutive failures (see the history screen).
+ *
+ * Authorisation mirrors recordOutlook: a valid deployment server credential,
+ * or any active RiverGuard account. Unauthenticated callers are rejected.
+ * The reason is sanitised — never a stack trace, secret, or URL.
+ */
+export const recordFailure = mutation({
+  args: {
+    locationCode: v.string(),
+    locationName: v.optional(v.string()),
+    issueDate: v.optional(v.string()),
+    provider: v.optional(v.string()),
+    providerDegraded: v.optional(v.boolean()),
+    retrievedAt: v.optional(v.number()),
+    failureStage: v.union(
+      v.literal("weather_provider"),
+      v.literal("ml_service"),
+      v.literal("persistence"),
+      v.literal("unknown"),
+    ),
+    failureReason: v.string(),
+    serverSecret: v.optional(v.string()),
+  },
+  returns: v.object({ runId: v.string() }),
+  handler: async (ctx, args) => {
+    const fromServer = hasIngestSecret(args.serverSecret);
+    const user = fromServer
+      ? null
+      : await requireRole(ctx, ["admin", "lgu", "researcher", "resident"]);
+    // Failures for an LGU account outside its jurisdiction are rejected like
+    // successes are; the history they read is location-scoped anyway.
+    if (user) {
+      await assertLocationAccess(ctx, user, args.locationCode);
+    }
+
+    const locationCode = assertSupportedCityCode(args.locationCode);
+    const now = Date.now();
+    const failureReason = sanitiseReason(args.failureReason);
+
+    const runId = await ctx.db.insert("forecastRuns", {
+      requestedBy: user?._id,
+      requestedAt: now,
+      completedAt: now,
+      provider: args.provider ?? "unknown",
+      retrievedAt: args.retrievedAt ?? now,
+      status: "failed",
+      errorCode: args.failureStage,
+      locationCode,
+      failureReason,
+    });
+
+    return { runId: String(runId) };
+  },
+});
+
+/**
+ * Reader-facing text only: strip anything that looks like a credential or a
+ * URL, and hard-cap the length. The deployment must never receive stack
+ * traces or provider payloads from the Next server.
+ */
+function sanitiseReason(reason: string): string {
+  let text = String(reason ?? "").slice(0, 300);
+  text = text.replace(/https?:\/\/\S+/gi, "[url]");
+  text = text.replace(
+    /(bearer|token|secret|key)\s*[:=]\s*\S+/gi,
+    "$1=[redacted]",
+  );
+  return text.trim() || "Unknown failure.";
+}

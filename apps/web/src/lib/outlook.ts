@@ -163,6 +163,10 @@ export interface ForecastApiResponse {
   warnings: string[];
   error?: string;
   detail?: string;
+  /** Present only on a non-OK response whose failure was reported by the server. */
+  failure?:
+    | { tracked: true; kind: PersistenceKind }
+    | { tracked: false; error?: string; kind?: PersistenceKind };
 }
 
 /**
@@ -226,11 +230,16 @@ export function useOutlookFeed(locationCode: string, horizonDays: 3 | 7 = 7) {
   /** Observed state from a run that failed downstream, for context in the UI. */
   const [failedObserved, setFailedObserved] =
     useState<ObservedStateSummary | null>(null);
+  /** Whether the failed attempt was logged as a failed run — never assumed. */
+  const [failureTracked, setFailureTracked] = useState<
+    "tracked" | "untracked" | null
+  >(null);
 
   const run = useCallback(async () => {
     setIsRunning(true);
     setError(null);
     setErrorDetail(null);
+    setFailureTracked(null);
     try {
       const token = await getIdToken();
       const response = await fetch("/api/forecast", {
@@ -246,6 +255,13 @@ export function useOutlookFeed(locationCode: string, horizonDays: 3 | 7 = 7) {
       if (!response.ok) {
         setError(payload.error ?? `Forecast failed (${response.status})`);
         setErrorDetail(payload.detail ?? null);
+        setFailureTracked(
+          payload.failure?.tracked === true
+            ? "tracked"
+            : payload.failure?.tracked === false
+              ? "untracked"
+              : null,
+        );
         // A failed run still reports what the model was fed, which is useful
         // when the failure is downstream of the weather call.
         setFailedObserved(payload.observedState ?? null);
@@ -274,6 +290,7 @@ export function useOutlookFeed(locationCode: string, horizonDays: 3 | 7 = 7) {
     error,
     errorDetail,
     failedObserved,
+    failureTracked,
     run,
     adopt,
   };

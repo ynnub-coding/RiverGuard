@@ -13,6 +13,7 @@ import Link from "next/link";
 import { StatusLabel } from "@/components/ui";
 import { DEFAULT_LOCATION, LOCATIONS } from "@/lib/locations";
 import { useOutlookFeed, type OutlookSource } from "@/lib/outlook";
+import { formatProbability } from "@/lib/probability";
 import type { OutlookDay } from "@/types";
 
 export interface RiskSummaryProps {
@@ -146,7 +147,7 @@ export function RiskSummary({
           <p className="text-body mt-1 text-muted">
             Experimental · City-level · Not an official warning
             {activeDay.probability !== undefined
-              ? ` · ${(activeDay.probability * 100).toFixed(1)}% flood probability`
+              ? ` · ${formatProbability(activeDay.probability)} flood probability`
               : ""}
             {activeDay.waterLevelM !== undefined
               ? ` · ${activeDay.waterLevelM.toFixed(2)} m predicted`
@@ -154,6 +155,10 @@ export function RiskSummary({
             {activeDay.rainfallMm !== undefined
               ? ` · ${activeDay.rainfallMm.toFixed(1)} mm rain`
               : ""}
+          </p>
+          <p className="text-metadata mt-1 text-muted">
+            Water level is a model-predicted proxy, not an actual river gauge
+            reading.
           </p>
           {activeDay.alertLevel && activeDay.alertLevel !== "none" ? (
             <p className="text-metadata mt-1 text-danger">
@@ -208,7 +213,7 @@ export function RiskSummary({
                   aria-pressed={active}
                   aria-label={`${day.day}, ${day.isoDate}: ${day.label}${
                     day.probability !== undefined
-                      ? `, ${(day.probability * 100).toFixed(0)}% probability`
+                      ? `, ${formatProbability(day.probability)} probability`
                       : ""
                   }`}
                   onClick={() => onDayChange(index)}

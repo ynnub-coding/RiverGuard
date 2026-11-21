@@ -13,6 +13,7 @@ import {
 } from "recharts";
 
 import type { OutlookDay } from "@/types";
+import { formatProbability } from "@/lib/probability";
 
 function riskClass(label: OutlookDay["label"]) {
   if (label === "Elevated") return "bg-[#f7ded8] text-[#9d3127]";
@@ -91,7 +92,10 @@ export function ResearcherForecastChart({
               formatter={(value, name) => {
                 const numeric = Number(value);
                 if (name === "probability")
-                  return [`${numeric.toFixed(1)}%`, "Flood probability"];
+                  return [
+                    formatProbability(numeric / 100),
+                    "Flood probability",
+                  ];
                 if (name === "rainfall")
                   return [`${numeric.toFixed(1)} mm`, "Rainfall"];
                 return [numeric, name];
@@ -155,7 +159,7 @@ export function ResearcherForecastChart({
             <span className="flex shrink-0 items-center gap-2.5">
               <span className="text-right">
                 <span className="block text-sm font-semibold tabular-nums">
-                  {((day.probability ?? 0) * 100).toFixed(0)}%
+                  {formatProbability(day.probability)}
                 </span>
                 <span className="block text-[10px] opacity-60">
                   probability

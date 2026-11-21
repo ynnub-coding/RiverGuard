@@ -162,6 +162,15 @@ export function DashboardLayout() {
                   {outlook.errorDetail}
                 </p>
               ) : null}
+              {outlook.failureTracked === "tracked" ? (
+                <p className="text-metadata mt-1 text-muted">
+                  This attempt was logged as a failed run in history.
+                </p>
+              ) : outlook.failureTracked === "untracked" ? (
+                <p className="text-metadata mt-1 text-warning">
+                  This attempt could not be logged as a failed run.
+                </p>
+              ) : null}
             </div>
           ) : null}
 

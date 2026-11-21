@@ -209,6 +209,7 @@ export function runHistoryRows(
     days: number;
     alerts: number;
     modelVersion: string | null;
+    errorCode?: string | null;
   }>,
 ): RunHistoryRow[] {
   return runs.map((run) => ({
@@ -226,7 +227,9 @@ export function runHistoryRows(
       run.status === "completed"
         ? `Complete · ${run.days} day(s)`
         : run.status === "failed"
-          ? "Failed"
+          ? run.errorCode
+            ? `Failed · ${run.errorCode.replace(/_/g, " ")}`
+            : "Failed"
           : "In progress",
     warning: run.alerts > 0 ? `${run.alerts} elevated day(s)` : "None",
   }));
