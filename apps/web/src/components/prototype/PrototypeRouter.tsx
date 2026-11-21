@@ -48,19 +48,10 @@ export function PrototypeRouter({
     );
   }
   if (section === "researcher") {
-    // The Data & map route is map-first: the RiverMap fills the viewport
-    // below the mobile header (and the full screen on md+), nothing else.
-    const mapFirst = segments[0] === "map";
     return (
       <WorkspaceGate role="researcher">
         <AppShell role="researcher" variant="research">
-          <main
-            className={
-              mapFirst
-                ? "h-[calc(100dvh-3.5rem)] md:h-screen"
-                : "workspace-page mx-auto min-h-screen max-w-[96rem] p-4 sm:p-5 lg:p-6"
-            }
-          >
+          <main className="workspace-page mx-auto min-h-screen max-w-[96rem] p-4 sm:p-5 lg:p-6">
             <ResearcherScreen segments={segments} />
           </main>
         </AppShell>

@@ -2,7 +2,6 @@
 
 import {
   ArrowClockwise,
-  ArrowsOutSimple,
   CalendarDots,
   CheckCircle,
   CloudRain,
@@ -16,7 +15,6 @@ import {
   Waves,
 } from "@phosphor-icons/react";
 import Image from "next/image";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ObservedHistoryChart } from "@/components/charts/ObservedHistoryChart";
@@ -409,7 +407,7 @@ export function ResearcherWorkspaceDashboard() {
         </section>
 
         <section className="mt-4 grid gap-4 lg:grid-cols-12">
-          <article className="flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] bg-white shadow-[0_12px_38px_rgba(7,42,76,0.06)] ring-1 ring-[#d7e2e9] lg:col-span-8">
+          <article className="flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] bg-white shadow-[0_12px_38px_rgba(7,42,76,0.06)] ring-1 ring-[#d7e2e9] lg:col-span-12">
             <div className="flex items-start justify-between gap-3 px-5 pt-5 sm:px-6 sm:pt-6">
               <div>
                 <h2 className="text-xl font-semibold tracking-[-0.035em]">
@@ -419,14 +417,7 @@ export function ResearcherWorkspaceDashboard() {
                   Real basemap with verified local layers when available.
                 </p>
               </div>
-              <Link
-                href="/researcher/map"
-                aria-label="Open the full-screen map"
-                title="Open the full-screen map"
-                className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-line text-[#147384] transition hover:bg-canvas-soft"
-              >
-                <ArrowsOutSimple size={18} aria-hidden="true" />
-              </Link>
+              <MapPin size={21} className="text-[#147384]" />
             </div>
             <div className="mt-4 min-h-[610px] flex-1">
               <RiverMap

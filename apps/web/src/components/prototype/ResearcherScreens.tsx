@@ -4,6 +4,7 @@ import {
   ArrowClockwise,
   ArrowRight,
   FloppyDisk,
+  MapPin,
   Play,
   Plus,
 } from "@phosphor-icons/react";
@@ -18,7 +19,6 @@ import {
 } from "@/components/dashboard/OutlookBridge";
 import { RiskSummary } from "@/components/dashboard/RiskSummary";
 import {
-  LOCATION_CODES,
   LOCATIONS,
   locationCodeForName,
   type LocationCode,
@@ -34,6 +34,7 @@ import {
   dataSourceRows,
   modelVersionRows,
   runHistoryRows,
+  supportedLocations,
 } from "@/data/prototype";
 import { convexFunctions } from "@/lib/convex-functions";
 import {
@@ -50,6 +51,7 @@ import { formatProbabilityDelta } from "@/lib/probability";
 import { useLocalRun, useLocalRuns } from "@/lib/use-runs";
 import { useDatasetMeta } from "@/lib/use-dataset-meta";
 import { useModelArtifacts } from "@/lib/use-model-artifacts";
+import { useGisLayers } from "@/lib/use-gis-layers";
 import type { MapLayerId } from "@/types";
 
 import {
@@ -72,53 +74,88 @@ function DashboardOverview() {
   return <ResearcherWorkspaceDashboard />;
 }
 
-/**
- * Map-only workspace: the screen is the map, end to end, inside the navigation
- * sidebar it belongs to. Every other element is gone on purpose; an
- * accessible, keyboard-reachable alternative to the map lives in a visually
- * hidden section instead of a visible sidebar.
- */
 function MapWorkspace() {
   const [activeLayer, setActiveLayer] = useState<MapLayerId>("base");
   const [locationCode, setLocationCode] = useState<LocationCode>("marikina");
   const [selectedDay, setSelectedDay] = useState(0);
   const outlook = useOutlookFeed(locationCode);
+  const gis = useGisLayers();
   return (
     <>
       {convexConfigured ? (
         <OutlookBridge locationCode={locationCode} onSnapshot={outlook.adopt} />
       ) : null}
-      <a
-        href="#map-accessible-list"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-canvas-soft focus:px-4 focus:py-2 focus:text-button focus:shadow-lg"
-      >
-        Skip to the accessible location list
-      </a>
-      <RiverMap
-        className="!h-full rounded-none"
-        activeLayer={activeLayer}
-        onLayerChange={setActiveLayer}
-        forecast={outlook.snapshot}
-        locationCode={locationCode}
-        selectedDay={selectedDay}
-        onDayChange={setSelectedDay}
-        onLocationChange={setLocationCode}
+      <PageHeading
+        title="Data & map"
+        eyebrow="Spatial explorer"
+        description="Explore supported locations and review the data sources behind the research workspace."
+        actions={
+          <ActionLink href="/admin/locations/marikina?view=research">
+            View Marikina details <ArrowRight size={14} />
+          </ActionLink>
+        }
       />
-      <section
-        id="map-accessible-list"
-        aria-label="Supported locations, text version of the map"
-        className="sr-only"
-      >
-        <h2>Supported locations (text version of the map)</h2>
-        <ul>
-          {LOCATION_CODES.map((code) => (
-            <li key={code}>
-              {LOCATIONS[code].name} ({LOCATIONS[code].river}) — city-level
-              experimental coverage
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.6fr)_320px]">
+        <RiverMap
+          activeLayer={activeLayer}
+          onLayerChange={setActiveLayer}
+          forecast={outlook.snapshot}
+          locationCode={locationCode}
+          selectedDay={selectedDay}
+          onDayChange={setSelectedDay}
+          onLocationChange={setLocationCode}
+        />
+        <div className="grid content-start gap-3 xl:flex xl:h-full xl:flex-col">
+          <Surface
+            title="Location list"
+            description="Accessible alternative to the map"
+            className="xl:flex-1"
+          >
+            <div className="grid gap-2">
+              {supportedLocations.map((location) => (
+                <div
+                  key={location.name}
+                  className="rounded-control border border-line p-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-button flex items-center gap-1">
+                        <MapPin size={14} /> {location.name}
+                      </p>
+                      <p className="text-metadata mt-1 text-muted">
+                        {location.support} · Updated {location.updated}
+                      </p>
+                    </div>
+                    <StatusBadge
+                      tone={location.status === "Elevated" ? "warning" : "info"}
+                    >
+                      {location.status}
+                    </StatusBadge>
+                  </div>
+                  <ActionLink
+                    href={`/admin/locations/${location.name.toLowerCase().replace(" ", "-")}?view=research`}
+                    variant="quiet"
+                    className="mt-3 w-full"
+                  >
+                    Open details
+                  </ActionLink>
+                </div>
+              ))}
+            </div>
+          </Surface>
+          <Notice title="Map limitation" className="xl:shrink-0">
+            {gis.layers.length === 0
+              ? "This is a real OpenStreetMap basemap. RiverGuard boundaries, monitoring stations and hazard layers are not loaded: none has passed verification in data/gis yet. The forecast model itself is city-level, so it has no geometry of its own to draw."
+              : `This is a real OpenStreetMap basemap plus ${gis.layers.length} verified local layer${
+                  gis.layers.length === 1 ? "" : "s"
+                } (${gis.layers
+                  .map((entry) => entry.title)
+                  .join(
+                    ", ",
+                  )}). The forecast model is city-level, so its predictions appear as numbers per city, never as geometry.`}
+          </Notice>
+        </div>
+      </div>
     </>
   );
 }
