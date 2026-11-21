@@ -41,6 +41,8 @@ interface HistoricalResponse {
   dateMin: string;
   dateMax: string;
   readings: HistoricalReading[];
+  /** What the response could not provide (unpublished days, missing levels). */
+  notes?: string[];
   error?: string;
   detail?: string;
 }
@@ -64,6 +66,7 @@ export function RainfallChart({
 } = {}) {
   const [readings, setReadings] = useState<HistoricalReading[]>([]);
   const [range, setRange] = useState<{ min: string; max: string } | null>(null);
+  const [notes, setNotes] = useState<string[]>([]);
   const [dataset, setDataset] = useState<string>("");
   const [state, setState] = useState<LoadState>("loading");
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
@@ -105,6 +108,7 @@ export function RainfallChart({
         if (!active) return;
         setReadings(payload.readings ?? []);
         setRange({ min: payload.dateMin, max: payload.dateMax });
+        setNotes(payload.notes ?? []);
         setDataset(payload.dataset);
         setErrorDetail(null);
         setState(payload.readings?.length ? "ready" : "empty");
@@ -381,6 +385,16 @@ export function RainfallChart({
                 </ChartContainer>
               </div>
             </div>
+            {notes.length > 0 ? (
+              <ul className="grid gap-1 text-metadata text-muted">
+                {notes.map((note) => (
+                  <li key={note} className="flex gap-1.5">
+                    <span aria-hidden="true">·</span>
+                    {note}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </>
         )}
       </div>

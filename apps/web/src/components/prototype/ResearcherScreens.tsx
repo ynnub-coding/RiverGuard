@@ -13,7 +13,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { MonthlyRainfallChart } from "@/components/charts/MonthlyRainfallChart";
 import { ObservedHistoryChart } from "@/components/charts/ObservedHistoryChart";
-import { convexConfigured } from "@/components/dashboard/OutlookBridge";
+import {
+  convexConfigured,
+  OutlookBridge,
+} from "@/components/dashboard/OutlookBridge";
 import { RiskSummary } from "@/components/dashboard/RiskSummary";
 import {
   LOCATIONS,
@@ -79,6 +82,9 @@ function MapWorkspace() {
   const gis = useGisLayers();
   return (
     <>
+      {convexConfigured ? (
+        <OutlookBridge locationCode={locationCode} onSnapshot={outlook.adopt} />
+      ) : null}
       <PageHeading
         title="Data & map"
         eyebrow="Spatial explorer"

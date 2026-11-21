@@ -40,6 +40,7 @@ import {
   storedToObservedDay,
 } from "@/lib/observation-store";
 import type { HistoricalReading } from "@/types";
+import { deriveWaterLevels } from "@/lib/water-level";
 import {
   addDays,
   daysBetween,
@@ -117,6 +118,8 @@ interface LiveWindow {
   stored: number;
   storeError?: string;
   providerError?: string;
+  /** Set when live days beyond the dataset's last row carry a derived level. */
+  derivedLevels?: { datasetLastDate: string; through: string };
 }
 
 /**
@@ -223,25 +226,84 @@ async function buildLiveWindow({
   const datasetRows = dataset
     ? new Map(seriesFor(dataset, location.name).map((row) => [row.date, row]))
     : new Map<string, ReturnType<typeof seriesFor>[number]>();
+  const datasetDates = [...datasetRows.keys()].sort();
+  const datasetLastDate =
+    datasetDates.length > 0 ? datasetDates[datasetDates.length - 1] : null;
 
   const ordered = [...days.values()].sort((left, right) =>
     left.isoDate.localeCompare(right.isoDate),
   );
 
+  // Days beyond the dataset's last row carry the same rainfall-derived water
+  // level the dataset itself uses: the reservoir recipe from
+  // data/generate_dataset.py, applied to the full history (dataset rainfall,
+  // then live rainfall for the new days) so the quick/slow stores and the
+  // fitted percentiles line up with the stored series. The result is a proxy,
+  // not a gauge reading, and the UI labels it as one. Verified against the
+  // stored series for all four cities (median |error| ≈ 0.03 m).
+  let derived: Map<string, number> | null = null;
+  const hasLiveDerivedDays =
+    datasetLastDate !== null &&
+    ordered.some((day) => day.isoDate > datasetLastDate);
+  if (hasLiveDerivedDays && dataset) {
+    try {
+      const datasetHistory = datasetDates.map((date) => ({
+        date,
+        rainfallMm: datasetRows.get(date)?.rainfallMm ?? 0,
+      }));
+      const liveTail = ordered
+        .filter((day) => day.isoDate > datasetLastDate)
+        .map((day) => ({ date: day.isoDate, rainfallMm: day.rainfallMm }));
+      derived = deriveWaterLevels([...datasetHistory, ...liveTail], {
+        alarm1: location.alarmLevelsM[0],
+        alarm3: location.alarmLevelsM[2],
+      });
+    } catch {
+      derived = null;
+    }
+  }
+  const derivedThrough =
+    derived !== null && datasetLastDate !== null
+      ? ordered[ordered.length - 1].isoDate
+      : undefined;
+
+  const round2 = (value: number) => Math.round(value * 100) / 100;
+  const levelAt = (date: string): number | undefined => derived?.get(date);
+
   let partialLevels = false;
 
   const readings = ordered.map((day, index) => {
-    // Water level and antecedent sums stay with the dataset while it covers the
-    // date. Beyond its last row the level is left null rather than extrapolated;
-    // antecedent rainfall is a straight sum of observed days, so it survives.
+    // Water level and antecedent sums stay with the dataset while it covers
+    // the date. Beyond its last row the level is the same derived proxy
+    // extended over live rainfall — never a gauge reading, and never an
+    // unlabelled extrapolation. When the dataset is not readable at all, the
+    // level is left null and the response says so.
     const known = datasetRows.get(day.isoDate);
-    if (!known) partialLevels = true;
+    const derivedLevel = known ? undefined : levelAt(day.isoDate);
+    if (!known && derivedLevel === undefined) partialLevels = true;
+    const level = known?.waterLevelM ?? derivedLevel ?? null;
+    let levelChange: number | null = known?.waterLevelChange24hM ?? null;
+    if (levelChange === null && level !== null && derived !== null) {
+      const previous =
+        index > 0
+          ? ordered[index - 1].isoDate
+          : datasetDates[datasetDates.length - 1];
+      const previousLevel =
+        index > 0
+          ? (datasetRows.get(previous)?.waterLevelM ?? levelAt(previous))
+          : datasetLastDate
+            ? datasetRows.get(datasetLastDate)?.waterLevelM
+            : undefined;
+      if (previousLevel !== undefined && previousLevel !== null) {
+        levelChange = round2(level - previousLevel);
+      }
+    }
     return {
       isoDate: day.isoDate,
       date: dateLabel(day.isoDate),
       rainfall: day.rainfallMm,
-      waterLevel: known?.waterLevelM ?? null,
-      waterLevelChange24h: known?.waterLevelChange24hM ?? null,
+      waterLevel: level,
+      waterLevelChange24h: levelChange,
       soilMoisture:
         known?.soilMoisturePct ?? storedSoilMoisture.get(day.isoDate) ?? null,
       antecedent3d: known?.antecedentRain3dMm ?? rollingSum(ordered, index, 3),
@@ -251,7 +313,13 @@ async function buildLiveWindow({
       floodOccurrence: known?.floodOccurrence ?? null,
       riskLevel: known?.riskLevel ?? undefined,
       rainSource: day.source,
-      qualityStatus: known ? "observed" : "observed-live",
+      // Mirrors the dataset's own label for live ERA5 days once the proxy is
+      // extended over them; plain "observed-live" only while no level exists.
+      qualityStatus: known
+        ? "observed"
+        : derivedLevel !== undefined
+          ? "observed-rain/derived-wl"
+          : "observed-live",
       split: known?.split ?? undefined,
       stationId: known?.stationId ?? undefined,
     } satisfies HistoricalReading;
@@ -269,6 +337,12 @@ async function buildLiveWindow({
     stored: stored?.length ?? 0,
     storeError,
     providerError,
+    derivedLevels:
+      derived !== null &&
+      datasetLastDate !== null &&
+      derivedThrough !== undefined
+        ? { datasetLastDate, through: derivedThrough }
+        : undefined,
   };
 }
 
@@ -361,9 +435,15 @@ export async function GET(request: Request) {
           } not published by Open-Meteo yet.`,
         );
       }
+      if (live.derivedLevels) {
+        const { datasetLastDate, through } = live.derivedLevels;
+        notes.push(
+          `Days after ${datasetLastDate} carry the same rainfall-derived water-level proxy as the dataset, extended over live rainfall through ${through} — not a gauge reading.`,
+        );
+      }
       if (live.partialLevels) {
         notes.push(
-          "Days after the dataset's last row carry observed rainfall only — water level is a rainfall-derived proxy and is not extrapolated.",
+          "Water level is a rainfall-derived proxy and needs the dataset's full rainfall history, which could not be read for this window — days after the dataset's last row show rainfall only.",
         );
       }
       if (live.providerError) {

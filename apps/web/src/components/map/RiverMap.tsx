@@ -531,9 +531,12 @@ export function RiverMap({
           </div>
         ) : null}
 
+        {/* The strip itself must not swallow clicks meant for the map or its
+            markers — same pattern as the reset control. Only the cards take
+            pointer events. */}
         {hideChrome ? null : (
-          <div className="absolute right-4 bottom-14 left-4 flex flex-col items-stretch justify-between gap-3 sm:right-5 sm:left-5 lg:flex-row lg:items-end">
-            <div className="w-full rounded-panel border border-line bg-canvas-soft/95 p-3 text-ink shadow-lg backdrop-blur-sm lg:max-w-[270px]">
+          <div className="pointer-events-none absolute right-4 bottom-14 left-4 flex flex-col items-stretch justify-between gap-3 sm:right-5 sm:left-5 lg:flex-row lg:items-end">
+            <div className="pointer-events-auto w-full rounded-panel border border-line bg-canvas-soft/95 p-3 text-ink shadow-lg backdrop-blur-sm lg:max-w-[270px]">
               <p className="text-button">
                 {activeLayer === "base" ? "Basemap" : "RiverGuard overlay"}
               </p>

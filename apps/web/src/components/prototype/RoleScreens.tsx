@@ -180,6 +180,9 @@ function ResidentLocationsWorkspace({}: {
 
   return (
     <div className="mx-auto max-w-[96rem]">
+      {convexConfigured ? (
+        <OutlookBridge locationCode={primary.code} onSnapshot={outlook.adopt} />
+      ) : null}
       <section className="mb-4 rounded-[1.75rem] bg-[#e7f0f5] px-5 py-6 ring-1 ring-[#0b3358]/8 sm:px-7">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#147384]">
           Resident spatial context
