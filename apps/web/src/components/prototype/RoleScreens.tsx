@@ -11,7 +11,8 @@ import {
 } from "@phosphor-icons/react";
 import { AccessPanel } from "../auth/AccessPanel";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ResidentOutlookSummary } from "./ResidentOutlookSummary";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 
@@ -159,6 +160,7 @@ function ResidentHome() {
         ))}
       </div>
 
+      <ResidentOutlookSummary snapshot={snapshot} />
       <SharedForecastOutlook
         snapshot={snapshot}
         error={outlook.error}
@@ -415,6 +417,105 @@ export function ResidentScreen({ segments }: { segments: string[] }) {
   return <ResidentHome />;
 }
 
+/**
+ * Counts the stored runs that actually need an LGU decision. Uses the same
+ * `recentRuns` query as the review queue, so the number on the card and the
+ * queue below it can never drift apart. Failed runs are not reviewable and are
+ * excluded — they belong to the failure history, not to assessment.
+ */
+function useLguReviewRuns() {
+  return useConvexQueryResult(convexFunctions.recentRuns, { limit: 100 });
+}
+
+function lguReviewCounts(runs: RecentRun[] | undefined, error: unknown) {
+  if (error) return { unavailable: true as const };
+  if (runs === undefined) return { loading: true as const };
+  const completed = runs.filter((run) => run.status === "completed");
+  return {
+    pending: completed.filter((run) => run.reviewStatus === "pending").length,
+    escalated: completed.filter((run) => run.reviewStatus === "escalated")
+      .length,
+  };
+}
+
+function LguReviewNeedsReviewMetric() {
+  if (!convexConfigured) {
+    return (
+      <Metric
+        icon={<ShieldCheck size={18} />}
+        label="Needs review"
+        value="—"
+        detail="Convex not configured"
+        tone="warning"
+      />
+    );
+  }
+  return <LguReviewNeedsReviewMetricLive />;
+}
+
+function LguReviewNeedsReviewMetricLive() {
+  const { data: runs, error } = useLguReviewRuns();
+  const counts = lguReviewCounts(runs, error);
+  const value =
+    counts.loading || counts.unavailable ? "—" : String(counts.pending);
+  const detail = counts.unavailable
+    ? "Runs unavailable"
+    : counts.loading
+      ? "Reading stored runs…"
+      : counts.pending === 0
+        ? "Nothing awaiting review"
+        : counts.pending === 1
+          ? "Run awaiting review"
+          : "Runs awaiting review";
+  return (
+    <Metric
+      icon={<ShieldCheck size={18} />}
+      label="Needs review"
+      value={value}
+      detail={detail}
+      tone="warning"
+    />
+  );
+}
+
+function LguEscalatedMetric() {
+  if (!convexConfigured) {
+    return (
+      <Metric
+        icon={<ShieldWarning size={18} />}
+        label="Escalated"
+        value="—"
+        detail="Convex not configured"
+        tone="danger"
+      />
+    );
+  }
+  return <LguEscalatedMetricLive />;
+}
+
+function LguEscalatedMetricLive() {
+  const { data: runs, error } = useLguReviewRuns();
+  const counts = lguReviewCounts(runs, error);
+  const value =
+    counts.loading || counts.unavailable ? "—" : String(counts.escalated);
+  const detail = counts.unavailable
+    ? "Runs unavailable"
+    : counts.loading
+      ? "Reading stored runs…"
+      : counts.escalated === 0
+        ? "Nothing escalated"
+        : "Awaiting authorized assessment";
+  return (
+    <Metric
+      icon={<ShieldWarning size={18} />}
+      label="Escalated"
+      value={value}
+      detail={detail}
+      tone="danger"
+    />
+  );
+}
+
 function LguHome() {
   const outlook = useOutlookFeed("marikina");
   const snapshot = outlook.snapshot;
@@ -441,13 +542,7 @@ function LguHome() {
         }
       />
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          icon={<ShieldCheck size={18} />}
-          label="Needs review"
-          value="1"
-          detail="Assigned-area run"
-          tone="warning"
-        />
+        <LguReviewNeedsReviewMetric />
         <Metric
           icon={<CalendarDots size={18} />}
           label="Latest run"
@@ -464,13 +559,7 @@ function LguHome() {
           }
           tone="warning"
         />
-        <Metric
-          icon={<ShieldWarning size={18} />}
-          label="Escalated"
-          value="1"
-          detail="Awaiting assessment"
-          tone="danger"
-        />
+        <LguEscalatedMetric />
       </div>
       <SharedForecastOutlook
         eyebrow="Assigned seven-day outlook"
@@ -672,6 +761,12 @@ function RemoteReviewForm({ runId }: { runId: string }) {
   return <ReviewEditor runId={runId} run={run} savedReview={savedReview} />;
 }
 
+const REVIEW_STATUS_LABEL: Record<LguReview["status"], string> = {
+  reviewed: "Reviewed — no escalation",
+  escalated: "Escalated for authorized assessment",
+  returned: "Returned for more evidence",
+};
+
 function ReviewEditor({
   runId,
   run,
@@ -682,12 +777,29 @@ function ReviewEditor({
   savedReview: LguReview | null;
 }) {
   const submitReview = useMutation(convexFunctions.submitLguReview);
+  const router = useRouter();
   const [status, setStatus] = useState<LguReview["status"]>(
     savedReview?.status ?? "reviewed",
   );
   const [notes, setNotes] = useState(savedReview?.notes ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  /** Set to the saved status once Convex accepted the write. */
+  const [savedStatus, setSavedStatus] = useState<LguReview["status"] | null>(
+    null,
+  );
+
+  // A completed save is a done state, not a footnote: the form is replaced by a
+  // confirmation and the reviewer is taken back to the queue (which updates
+  // itself over the live subscription — the saved run drops out of "Needs
+  // review" and the counter decrements).
+  useEffect(() => {
+    if (savedStatus === null) return;
+    const timer = window.setTimeout(() => {
+      router.push("/lgu/reviews");
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [savedStatus, router]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -699,12 +811,38 @@ function ReviewEditor({
     setMessage(null);
     try {
       await submitReview({ runId, status, notes });
-      setMessage("Assessment saved to Convex.");
+      setSavedStatus(status);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Assessment failed.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (savedStatus !== null) {
+    return (
+      <>
+        <PageHeading
+          title="Assessment saved"
+          eyebrow="Review queue"
+          description="The assessment is stored against this run."
+        />
+        <Surface>
+          <div className="flex flex-col items-start gap-3 rounded-control border border-success/30 bg-success/5 p-5">
+            <p className="flex items-center gap-2 text-section text-success">
+              <ShieldCheck size={20} aria-hidden="true" /> Assessment saved
+            </p>
+            <p className="text-body text-muted">
+              Status: <strong>{REVIEW_STATUS_LABEL[savedStatus]}</strong>.
+              Returning to the review queue…
+            </p>
+            <ActionLink href="/lgu/reviews" variant="primary" className="mt-1">
+              Back to review queue
+            </ActionLink>
+          </div>
+        </Surface>
+      </>
+    );
   }
 
   return (
@@ -1041,9 +1179,6 @@ function ConfigurationScreen({
   kind: string;
   detail?: string;
 }) {
-  // `saved` is read for the "saved" confirmation; nothing in this screen sets
-  // it because the form is not wired to a backend yet.
-  const [saved] = useState(false);
   const searchParams = useSearchParams();
   const researchView =
     searchParams.get("view") === "research" || Boolean(detail);
@@ -1173,11 +1308,6 @@ function ConfigurationScreen({
         >
           <FloppyDisk size={14} /> Configuration unavailable
         </Button>
-        {saved ? (
-          <p className="text-metadata mt-2 text-success" role="status">
-            Configuration saved for this session.
-          </p>
-        ) : null}
       </Surface>
     </>
   );
@@ -1292,10 +1422,13 @@ export function AdminScreen({ segments }: { segments: string[] }) {
  * A review row exists only because a run exists. This is a separate component so
  * the Convex query is never called without a ConvexProvider.
  */
+type ReviewFilter = "pending" | "reviewed" | "escalated" | "returned" | "all";
+
 function StoredRunReviewQueue() {
+  const [filter, setFilter] = useState<ReviewFilter>("pending");
   const { data: runs, error } = useConvexQueryResult(
     convexFunctions.recentRuns,
-    { limit: 10 },
+    { limit: 100 },
   );
   if (error) {
     // A deployment that has not been pushed yet must say so, not pretend the
@@ -1309,6 +1442,27 @@ function StoredRunReviewQueue() {
   if (runs === undefined) {
     return <p className="text-body text-muted">Loading stored runs…</p>;
   }
+  const completed = runs.filter((run) => run.status === "completed");
+  const counts = {
+    pending: completed.filter((run) => run.reviewStatus === "pending").length,
+    reviewed: completed.filter((run) => run.reviewStatus === "reviewed").length,
+    escalated: completed.filter((run) => run.reviewStatus === "escalated")
+      .length,
+    returned: completed.filter((run) => run.reviewStatus === "returned").length,
+    all: runs.length,
+  };
+  const visible = runs.filter((run) => {
+    if (filter === "all") return true;
+    if (run.status !== "completed") return false;
+    return run.reviewStatus === filter;
+  });
+  const tabs: Array<{ key: ReviewFilter; label: string; count: number }> = [
+    { key: "pending", label: "Needs review", count: counts.pending },
+    { key: "reviewed", label: "Reviewed", count: counts.reviewed },
+    { key: "escalated", label: "Escalated", count: counts.escalated },
+    { key: "returned", label: "Returned", count: counts.returned },
+    { key: "all", label: "All runs", count: counts.all },
+  ];
   if (runs.length === 0) {
     return (
       <p className="text-body text-muted">
@@ -1317,7 +1471,7 @@ function StoredRunReviewQueue() {
       </p>
     );
   }
-  const rows: Array<Record<string, string>> = runs.map((run: RecentRun) => ({
+  const rows: Array<Record<string, string>> = visible.map((run: RecentRun) => ({
     run: run.runId,
     location: run.locations.length ? run.locations.join(", ") : "—",
     valid: `${run.days} day(s)`,
@@ -1337,23 +1491,58 @@ function StoredRunReviewQueue() {
       timeZone: "Asia/Manila",
     }),
   }));
+
+  const emptyText: Record<ReviewFilter, string> = {
+    pending: "Nothing awaiting review. Every completed run has an assessment.",
+    reviewed: "No reviewed run in this window yet.",
+    escalated: "No run has been escalated in this window.",
+    returned: "No run has been returned for more evidence.",
+    all: "No stored runs yet. Run a forecast from the research workspace to create one.",
+  };
+
   return (
-    <DataTable
-      columns={[
-        { key: "run", label: "Run" },
-        { key: "location", label: "Location" },
-        { key: "valid", label: "Valid period" },
-        { key: "quality", label: "Quality" },
-        { key: "review", label: "Review status" },
-        { key: "reviewer", label: "Reviewer" },
-        { key: "updated", label: "Updated" },
-      ]}
-      rows={rows}
-      actions={(row) => (
-        <ActionLink href={`/lgu/reviews/${row.run}`} variant="quiet">
-          Review
-        </ActionLink>
+    <div className="grid gap-3">
+      <div
+        className="flex flex-wrap gap-1"
+        aria-label="Filter the review queue"
+      >
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            aria-current={filter === tab.key}
+            onClick={() => setFilter(tab.key)}
+            className={
+              filter === tab.key
+                ? "rounded-control bg-brand-primary px-3 py-1.5 text-metadata font-semibold text-white"
+                : "rounded-control border border-line bg-canvas px-3 py-1.5 text-metadata text-muted hover:bg-canvas-soft"
+            }
+          >
+            {tab.label} ({tab.count})
+          </button>
+        ))}
+      </div>
+      {visible.length === 0 ? (
+        <p className="text-body text-muted">{emptyText[filter]}</p>
+      ) : (
+        <DataTable
+          columns={[
+            { key: "run", label: "Run" },
+            { key: "location", label: "Location" },
+            { key: "valid", label: "Valid period" },
+            { key: "quality", label: "Quality" },
+            { key: "review", label: "Review status" },
+            { key: "reviewer", label: "Reviewer" },
+            { key: "updated", label: "Updated" },
+          ]}
+          rows={rows}
+          actions={(row) => (
+            <ActionLink href={`/lgu/reviews/${row.run}`} variant="quiet">
+              Review
+            </ActionLink>
+          )}
+        />
       )}
-    />
+    </div>
   );
 }

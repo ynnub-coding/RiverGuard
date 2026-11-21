@@ -1739,7 +1739,6 @@ function DataSourceForm({
 }: {
   basePath?: string;
 }) {
-  const [saved] = useState(false);
   return (
     <>
       <PageHeading
@@ -1804,14 +1803,6 @@ function DataSourceForm({
             <FloppyDisk size={14} /> Editing unavailable
           </Button>
         </div>
-        {saved ? (
-          <p
-            className="text-metadata mt-2 text-right text-success"
-            role="status"
-          >
-            Metadata saved.
-          </p>
-        ) : null}
       </Surface>
     </>
   );
