@@ -2,6 +2,7 @@
 
 import {
   ArrowClockwise,
+  ArrowsOutSimple,
   CalendarDots,
   CheckCircle,
   CloudRain,
@@ -15,6 +16,7 @@ import {
   Waves,
 } from "@phosphor-icons/react";
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ObservedHistoryChart } from "@/components/charts/ObservedHistoryChart";
@@ -417,7 +419,14 @@ export function ResearcherWorkspaceDashboard() {
                   Real basemap with verified local layers when available.
                 </p>
               </div>
-              <MapPin size={21} className="text-[#147384]" />
+              <Link
+                href="/researcher/map"
+                aria-label="Open the full-screen map"
+                title="Open the full-screen map"
+                className="inline-flex size-10 shrink-0 items-center justify-center rounded-control border border-line text-[#147384] transition hover:bg-canvas-soft"
+              >
+                <ArrowsOutSimple size={18} aria-hidden="true" />
+              </Link>
             </div>
             <div className="mt-4 min-h-[610px] flex-1">
               <RiverMap
